@@ -471,7 +471,7 @@ tr:last-child td{border-bottom:none}
           <input type="tel" class="fc" id="li-phone" placeholder="05X-XXXXXXX"
             autocomplete="tel" inputmode="tel">
         </div>
-        <div id="login-err" style="display:none" class="al alr" style="font-size:13px">
+        <div id="login-err" style="display:none;font-size:13px" class="al alr">
           <span>⚠️</span><span id="login-err-msg">מספר טלפון לא מזוהה במערכת</span>
         </div>
         <button type="submit" class="btn-login">כניסה למערכת →</button>
@@ -688,6 +688,7 @@ const NOTIFS=[
 const USERS=[
   {id:'u1',name:'מוטי עבדהו',phone:'0528449565',role:'superadmin',rh:'מנהל ראשי',title:'מנהל כספים',active:true,zone:'כל הארגון',addedBy:'מערכת',addedAt:'1.1.26'},
   {id:'u2',name:'אבי מיכאלי',phone:'0585270779',role:'superadmin',rh:'מנהל ראשי',title:'מנהל ראשי',active:true,zone:'כל הארגון',addedBy:'מוטי עבדהו',addedAt:'1.1.26'},
+  {id:'u8',name:'הילה עדי',phone:'0547881699',role:'superadmin',rh:'מנהל ראשי',title:'מנהל ראשי',active:true,zone:'כל הארגון',addedBy:'אבי מיכאלי',addedAt:'14.7.26'},
   {id:'u3',name:'רוני לוי',phone:'0521234567',role:'housing',rh:'מנהל דיור',title:'מנהל דיור',active:true,zone:'חיפה, עכו',addedBy:'מוטי עבדהו',addedAt:'5.1.26'},
   {id:'u4',name:'עמית כץ',phone:'0531234567',role:'housing',rh:'מנהל דיור',title:'מנהל דיור',active:true,zone:'ק. ביאליק, ק. שמונה',addedBy:'אבי מיכאלי',addedAt:'5.1.26'},
   {id:'u5',name:'אבי שרון',phone:'0541234567',role:'housing',rh:'מנהל דיור',title:'מנהל דיור',active:true,zone:'ירושלים, נתיבות, נטועה',addedBy:'מוטי עבדהו',addedAt:'6.1.26'},

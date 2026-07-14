@@ -465,17 +465,18 @@ tr:last-child td{border-bottom:none}
       <p>מערכת ניהול דיור ארגונית</p>
     </div>
     <div class="lbody">
-      <form onsubmit="doLogin(event)" id="login-form">
+      <div style="display:flex;flex-direction:column;gap:12px">
         <div class="fg">
           <label>מספר טלפון</label>
           <input type="tel" class="fc" id="li-phone" placeholder="05X-XXXXXXX"
-            autocomplete="tel" inputmode="tel">
+            autocomplete="tel" inputmode="tel"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();doLoginBtn()}">
         </div>
         <div id="login-err" style="display:none;font-size:13px" class="al alr">
           <span>⚠️</span><span id="login-err-msg">מספר טלפון לא מזוהה במערכת</span>
         </div>
-        <button type="submit" class="btn-login">כניסה למערכת →</button>
-      </form>
+        <button type="button" class="btn-login" onclick="doLoginBtn()">כניסה למערכת →</button>
+      </div>
     </div>
     <div class="lfoot">
       <p>כניסה מהירה לדמו</p>
@@ -718,6 +719,30 @@ function normalizePhone(p){
   return p;
 }
 
+function doLoginBtn(){
+  const raw=document.getElementById('li-phone').value.trim();
+  const phone=normalizePhone(raw);
+  const user=USERS.find(u=>normalizePhone(u.phone)===phone);
+  const errEl=document.getElementById('login-err');
+  if(!raw){
+    errEl.style.display='flex';
+    document.getElementById('login-err-msg').textContent='יש להזין מספר טלפון';
+    return;
+  }
+  if(!user){
+    errEl.style.display='flex';
+    document.getElementById('login-err-msg').textContent='מספר טלפון לא מזוהה במערכת';
+    document.getElementById('li-phone').focus();
+    return;
+  }
+  if(!user.active){
+    errEl.style.display='flex';
+    document.getElementById('login-err-msg').textContent='משתמש זה אינו פעיל';
+    return;
+  }
+  errEl.style.display='none';
+  loginAs(user);
+}
 function doLogin(e){
   e.preventDefault();
   const raw=document.getElementById('li-phone').value.trim();
@@ -741,7 +766,7 @@ function doLogin(e){
 
 function qlPhone(phone){
   document.getElementById('li-phone').value=phone;
-  doLogin({preventDefault:()=>{}});
+  doLoginBtn();
 }
 // keep old ql for backward compat (demo)
 function ql(r){

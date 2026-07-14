@@ -1,8 +1,9 @@
 {
   "name": "מרכז מעשה — ניהול דיור",
-  "short_name": "מעשה דיור",
-  "description": "מערכת ניהול דיור — מרכז מעשה",
-  "start_url": "/",
+  "short_name": "דירות מעשה",
+  "description": "מערכת ניהול דיור ארגונית",
+  "start_url": "/maase-housing/",
+  "scope": "/maase-housing/",
   "display": "standalone",
   "background_color": "#1a3a5c",
   "theme_color": "#1a3a5c",
@@ -10,24 +11,10 @@
   "dir": "rtl",
   "orientation": "portrait-primary",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
-  ],
-  "categories": ["productivity", "utilities"],
-  "shortcuts": [
     {
-      "name": "דווח תקלה",
-      "short_name": "תקלה",
-      "description": "פתח קריאת תקלה חדשה",
-      "url": "/?action=new-fault",
-      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "ביקורת חודשית",
-      "short_name": "ביקורת",
-      "description": "בצע ביקורת חודשית",
-      "url": "/?action=inspection",
-      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+      "src": "https://raw.githubusercontent.com/avimichaeli-pixel/maase-housing/main/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
     }
   ]
 }

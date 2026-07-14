@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>מרכז מעשה — ניהול דיור</title>
 <link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ── TOKENS ────────────────────────────── */
 :root{
@@ -557,6 +558,174 @@ tr:last-child td{border-bottom:none}
 <div id="mr"></div><!-- modal root -->
 
 <script>
+/* ── SUPABASE ─────────────────────────── */
+const SUPA_URL = 'https://nfefaqzjfwgvvtqwydph.supabase.co';
+const SUPA_KEY = 'sb_publishable_PV3q8XaD87a8I7BFUK0Mww_PM-fjFXd';
+let sb = null;
+let DB_READY = false;
+
+async function initSupabase() {
+  try {
+    sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+    // Test connection
+    const { data, error } = await sb.from('users').select('count', {count:'exact',head:true});
+    if (error && error.code === '42P01') {
+      // Tables don't exist yet
+      console.log('Tables not created yet');
+      DB_READY = false;
+    } else {
+      DB_READY = true;
+      console.log('✅ Supabase connected');
+      await loadUsersFromDB();
+      await loadApartmentsFromDB();
+    }
+  } catch(e) {
+    console.warn('Supabase offline, using local data:', e.message);
+    DB_READY = false;
+  }
+}
+
+// ── LOAD DATA ──
+async function loadUsersFromDB() {
+  if (!DB_READY) return;
+  const { data, error } = await sb.from('users').select('*').order('added_at');
+  if (!error && data && data.length > 0) {
+    // Merge with local USERS, DB takes priority
+    data.forEach(u => {
+      const exists = USERS.findIndex(x => x.phone === u.phone);
+      const mapped = {
+        id: u.id, name: u.name, phone: u.phone,
+        role: u.role, rh: {superadmin:'מנהל ראשי',admin:'מנהל ארגון',housing:'מנהל דיור',manager:'מנהל דירה'}[u.role] || u.role,
+        title: u.title || u.role, active: u.active,
+        zone: u.zone || '', addedBy: u.added_by || '', addedAt: u.added_at ? u.added_at.split('T')[0] : ''
+      };
+      if (exists >= 0) USERS[exists] = mapped;
+      else USERS.push(mapped);
+    });
+    console.log('✅ Users loaded from DB:', data.length);
+  }
+}
+
+async function loadApartmentsFromDB() {
+  if (!DB_READY) return;
+  const { data, error } = await sb.from('apartments').select('*').order('proj');
+  if (!error && data && data.length > 0) {
+    // Replace APTS with DB data
+    APTS.length = 0;
+    data.forEach(a => {
+      APTS.push({
+        id: a.id, proj: a.proj || '', city: a.city || '',
+        addr: a.addr || '', type: a.type || '',
+        lease: a.lease || '', ll: a.landlord || '',
+        ph: a.phone || '', elec: a.elec || '', water: a.water || '',
+        mg: a.manager_name || '', hm: a.housing_manager || '',
+        st: a.status || 'פעילה', faults: 0, ins: false,
+        sheet: a.sheet || 'תשפו', notes: a.notes || ''
+      });
+    });
+    console.log('✅ Apartments loaded from DB:', data.length);
+  }
+}
+
+async function loadFaultsFromDB() {
+  if (!DB_READY) return [];
+  const { data, error } = await sb.from('faults').select('*').order('reported_at', {ascending:false});
+  if (!error && data) {
+    FAULTS.length = 0;
+    data.forEach(f => {
+      FAULTS.push({
+        id: f.id, aid: f.apt_id, apt: f.apt_addr, city: f.city,
+        pr: f.proj, rep: f.reporter,
+        date: f.reported_at ? new Date(f.reported_at).toLocaleDateString('he-IL') : '',
+        cat: f.category, desc: f.description,
+        urg: f.urgency, rec: f.recurring, rn: f.recurrence_count,
+        st: f.status, hn: f.handler, note: f.handler_note
+      });
+    });
+    return data;
+  }
+  return [];
+}
+
+// ── SAVE DATA ──
+async function saveFaultToDB(fault) {
+  if (!DB_READY) return;
+  const { error } = await sb.from('faults').insert({
+    id: fault.id.startsWith('f') ? undefined : fault.id,
+    apt_id: fault.aid, apt_addr: fault.apt,
+    city: fault.city, proj: fault.pr,
+    reporter: fault.rep, category: fault.cat,
+    description: fault.desc, urgency: fault.urg,
+    recurring: fault.rec, recurrence_count: fault.rn || 0,
+    status: fault.st
+  });
+  if (error) console.error('Save fault error:', error);
+  else console.log('✅ Fault saved to DB');
+}
+
+async function updateFaultInDB(faultId, updates) {
+  if (!DB_READY) return;
+  const { error } = await sb.from('faults').update({
+    status: updates.st, handler: updates.hn,
+    handler_note: updates.note, updated_at: new Date().toISOString(),
+    closed_at: updates.st === 'תוקנה' ? new Date().toISOString() : null,
+    closed_by: updates.st === 'תוקנה' ? CU.name : null
+  }).eq('id', faultId);
+  if (error) console.error('Update fault error:', error);
+}
+
+async function saveInspectionToDB(insp) {
+  if (!DB_READY) return;
+  const { error } = await sb.from('inspections').insert({
+    apt_id: insp.aid, apt_addr: insp.apt,
+    city: insp.city, type: insp.type,
+    month: insp.month, year: insp.year,
+    inspector: insp.inspector, status: insp.status,
+    score: insp.score || 0, notes: insp.notes || ''
+  });
+  if (error) console.error('Save inspection error:', error);
+  else console.log('✅ Inspection saved to DB');
+}
+
+async function saveUserToDB(user) {
+  if (!DB_READY) return;
+  const { error } = await sb.from('users').upsert({
+    id: user.id, name: user.name, phone: user.phone,
+    role: user.role, title: user.title,
+    zone: user.zone, active: user.active,
+    added_by: user.addedBy
+  });
+  if (error) console.error('Save user error:', error);
+  else console.log('✅ User saved to DB');
+}
+
+async function saveAuditLog(action, details, aptId, aptAddr) {
+  if (!DB_READY) return;
+  await sb.from('audit_log').insert({
+    action, user_name: CU?.name, user_phone: CU?.phone,
+    apt_id: aptId, apt_addr: aptAddr, details
+  });
+}
+
+async function seedInitialData() {
+  if (!DB_READY) return;
+  // Seed users
+  for (const u of USERS) {
+    await saveUserToDB(u);
+  }
+  // Seed apartments
+  const aptsToSeed = APTS.map(a => ({
+    id: a.id, proj: a.proj, city: a.city, addr: a.addr,
+    type: a.type, lease: a.lease, landlord: a.ll,
+    phone: a.ph, elec: a.elec, water: a.water,
+    manager_name: a.mg, housing_manager: a.hm,
+    status: a.st, sheet: a.sheet
+  }));
+  const { error } = await sb.from('apartments').upsert(aptsToSeed);
+  if (error) console.error('Seed apartments error:', error);
+  else console.log('✅ Seeded', aptsToSeed.length, 'apartments');
+}
+
 /* ── DATA ──────────────────────────────── */
 const APTS=[
   {id:'a1',proj:'מכינת גל',city:'חיפה',addr:'המעפילים 16א דירה 2',type:'שכירות',lease:'22.8.26',ll:'פיני פרבר',ph:'',elec:'346057223',water:'9738',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
@@ -774,17 +943,18 @@ function ql(r){
   qlPhone(m[r]||m.admin);
 }
 
-function loginAs(user){
+async function loginAs(user){
   CU=user;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('sbav').textContent=RI[CU.role];
   document.getElementById('sbun').textContent=CU.name;
   document.getElementById('sbur').textContent=CU.title||RL[CU.role];
-  // superadmin = full access, admin = full access, others restricted
-  const isAdmin=CU.role==='superadmin'||CU.role==='admin';
+  const isAdm=CU.role==='superadmin'||CU.role==='admin';
   document.querySelectorAll('.admin-only').forEach(e=>
-    e.style.display=isAdmin?'flex':'none');
+    e.style.display=isAdm?'flex':'none');
+  // Load faults from DB
+  if(DB_READY) await loadFaultsFromDB();
   go('dashboard');
 }
 
@@ -1456,14 +1626,17 @@ function subFault(){
   if(!desc){toast('יש למלא תיאור','var(--red)');return}
   if(!name){toast('שם מלא הוא שדה חובה!','var(--red)');return}
   const a=APTS.find(x=>x.id===apt);
-  FAULTS.unshift({id:'f'+(FAULTS.length+1),aid:apt,apt:a.addr,city:a.city,pr:a.pr,
+  const newFault={id:'f'+(FAULTS.length+1),aid:apt,apt:a.addr,city:a.city,pr:a.pr,
     rep:name,date:new Date().toLocaleDateString('he-IL'),
     cat:document.getElementById('nf-cat').value,
     desc,urg:document.getElementById('nf-urg').value,
     rec:document.getElementById('nf-rec').value==='כן',
     rn:parseInt(document.getElementById('nf-rn')?.value||1),
-    st:'פתוחה',hn:'',note:''});
+    st:'פתוחה',hn:'',note:''};
+  FAULTS.unshift(newFault);
   a.faults++;
+  saveFaultToDB(newFault);
+  saveAuditLog('פתיחת תקלה', desc, apt, a.addr);
   cm();go('faults');
   toast('התקלה נשלחה בהצלחה ✓','var(--green)');
 }
@@ -1517,8 +1690,12 @@ function saveFV(id,force){
   const n=document.getElementById('fv-hn').value.trim();
   if(!n){toast('שם מלא חובה!','var(--red)');return}
   const i=FAULTS.findIndex(f=>f.id===id);
-  if(i>=0){FAULTS[i].st=force||document.getElementById('fv-st').value;
-           FAULTS[i].hn=n;FAULTS[i].note=document.getElementById('fv-note').value}
+  if(i>=0){
+    FAULTS[i].st=force||document.getElementById('fv-st').value;
+    FAULTS[i].hn=n;FAULTS[i].note=document.getElementById('fv-note').value;
+    updateFaultInDB(id, FAULTS[i]);
+    saveAuditLog('עדכון תקלה', FAULTS[i].st, FAULTS[i].aid, FAULTS[i].apt);
+  }
   cm();go('faults');
   toast(force==='תוקנה'?'תקלה סומנה כתוקנה ✓':'עדכון נשמר ✓','var(--green)');
 }
@@ -1799,12 +1976,15 @@ function submitAddUser(){
     toast('מספר טלפון זה כבר קיים במערכת!','var(--red)');return
   }
   const rh={superadmin:'מנהל ראשי',housing:'מנהל דיור',manager:'מנהל דירה'}[role];
-  USERS.push({
+  const newUser={
     id:'u'+(USERS.length+1),name,phone:norm,
     role,rh,title:title||rh,active:true,zone,
     addedBy:CU.name,addedAt:new Date().toLocaleDateString('he-IL')
-  });
+  };
+  USERS.push(newUser);
   LOG.unshift({ts:new Date().toLocaleString('he-IL'),user:CU.name,act:'הוספת משתמש',apt:'—',ch:`נוסף: ${name} (${rh})`});
+  saveUserToDB(newUser);
+  saveAuditLog('הוספת משתמש', `נוסף: ${name} (${rh})`, null, null);
   cm();go('users');
   toast(`${name} נוסף בהצלחה ✓`,'var(--green)');
 }
@@ -1875,6 +2055,10 @@ function submitEditUser(uid){
   cm();go('users');
   toast('המשתמש עודכן ✓','var(--green)');
 }
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', async () => {
+  await initSupabase();
+});
 </script>
 </body>
 </html>

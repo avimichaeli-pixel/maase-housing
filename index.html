@@ -1003,7 +1003,7 @@ function closeSB(){
 
 /* ── HELPERS ─────────────────────────────── */
 const ub=u=>u==='דחוף מאוד'?'xr':u==='דחוף'?'xo':'xb';
-const sb=s=>s==='פעילה'?'xg':s==='עזבנו'||s==='לא פעילה'?'xr':s==='בהכנה'?'xo':'xgr';
+const statusBadge=s=>s==='פעילה'?'xg':s==='עזבנו'||s==='לא פעילה'?'xr':s==='בהכנה'?'xo':'xgr';
 const fb=s=>s==='תוקנה'||s==='נסגרה'?'xg':s==='פתוחה'?'xr':s==='בטיפול'?'xo':s==='ממתינה לספק'?'xp':'xgr';
 const ib=s=>s==='בוצעה'?'xg':s==='לא בוצעה'?'xr':s==='באיחור'?'xo':'xgr';
 const bx=(c,t)=>`<span class="bx ${c}">${t}</span>`;
@@ -1205,7 +1205,7 @@ ${filtered.map(a=>`
         <div class="asub">📍 ${a.city}${a.addr?' — '+a.addr:''}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-        ${bx(sb(a.st),a.st)}
+        ${bx(statusBadge(a.st),a.st)}
         ${cx(a.type==='שכירות'?'b':a.type==='רשות'?'p':'o', a.type||'—')}
       </div>
     </div>
@@ -1710,7 +1710,7 @@ function mAptV(id){
     <div class="mbody">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">עיר</div><b style="font-size:14px">${a.city}</b></div>
-        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">סטטוס</div><div style="margin-top:4px">${bx(sb(a.st),a.st)}</div></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">סטטוס</div><div style="margin-top:4px">${bx(statusBadge(a.st),a.st)}</div></div>
         <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">סוג נכס</div><b>${a.type||'—'}</b></div>
         <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">מקור נתונים</div><b>${a.sheet==='תשפו'?'שכירות תשפ״ו':a.sheet==='מתחמים-קיבוצים'?'מתחמי קיבוצים':'רשות/עמידר תשפ״ד'}</b></div>
         <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">תכנית / פרויקט</div><b>${a.proj||'—'}</b></div>

@@ -1,0 +1,1854 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a3a5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>מרכז מעשה — ניהול דיור</title>
+<link rel="manifest" href="manifest.json">
+<style>
+/* ── TOKENS ────────────────────────────── */
+:root{
+  --blue:#1a3a5c; --blum:#2563ab; --blul:#dbeafe;
+  --green:#16a34a; --greenl:#dcfce7;
+  --orange:#ea580c; --orangel:#ffedd5;
+  --red:#dc2626; --redl:#fee2e2;
+  --purple:#7c3aed; --purplel:#ede9fe;
+  --g50:#f8fafc; --g100:#f1f5f9; --g200:#e2e8f0;
+  --g400:#94a3b8; --g600:#475569; --g800:#1e293b;
+  --r:12px; --sh:0 2px 8px rgba(0,0,0,.09); --sh2:0 8px 28px rgba(0,0,0,.15);
+  --f:'Segoe UI',Arial,sans-serif;
+  --bnav:64px; /* bottom nav height */
+}
+
+/* ── RESET ──────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--f);background:var(--g50);color:var(--g800);direction:rtl;
+     font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%}
+button{cursor:pointer;font-family:var(--f);border:none;background:none;-webkit-appearance:none}
+input,select,textarea{font-family:var(--f);direction:rtl;font-size:16px;/* prevents iOS zoom */}
+a{color:inherit;text-decoration:none}
+img{max-width:100%}
+
+/* ── LOGIN ──────────────────────────────── */
+#login-screen{
+  min-height:100svh;display:flex;align-items:center;justify-content:center;
+  padding:16px;
+  background:linear-gradient(150deg,#0d2540 0%,#1a3a5c 55%,#1e6bb8 100%);
+}
+.lcard{background:#fff;border-radius:20px;width:100%;max-width:400px;overflow:hidden;box-shadow:var(--sh2)}
+.lhero{background:linear-gradient(135deg,var(--blue),var(--blum));padding:28px 24px 20px;text-align:center}
+.lhero .ico{font-size:44px;display:block;margin-bottom:8px}
+.lhero h1{color:#fff;font-size:20px;font-weight:800}
+.lhero p{color:rgba(255,255,255,.6);font-size:13px;margin-top:3px}
+.lbody{padding:22px}
+.lbody form{display:flex;flex-direction:column;gap:12px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:800;color:var(--g600);text-transform:uppercase;letter-spacing:.5px}
+.fc{border:1.5px solid var(--g200);border-radius:10px;padding:13px 14px;
+    font-size:16px;width:100%;outline:none;background:#fff;transition:border-color .15s}
+.fc:focus{border-color:var(--blum);box-shadow:0 0 0 3px rgba(37,99,171,.1)}
+.btn-login{width:100%;padding:14px;background:var(--blum);color:#fff;
+           border-radius:12px;font-size:16px;font-weight:800;margin-top:4px;
+           transition:transform .1s,opacity .15s}
+.btn-login:active{transform:scale(.97);opacity:.9}
+.lfoot{border-top:1px solid var(--g100);background:var(--g50);padding:18px 22px 22px}
+.lfoot p{font-size:11px;color:var(--g400);text-align:center;margin-bottom:10px;
+          font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.demo-row{display:flex;gap:8px}
+.dbtn{flex:1;padding:12px 4px;border-radius:10px;border:1.5px solid var(--g200);
+      background:#fff;font-size:11px;font-weight:800;color:var(--g600);
+      display:flex;flex-direction:column;align-items:center;gap:5px;
+      transition:border-color .15s,color .15s,transform .1s}
+.dbtn:active{transform:scale(.95)}
+.dbtn .di{font-size:24px}
+.dbtn:hover,.dbtn:active{border-color:var(--blum);color:var(--blum)}
+
+/* ── APP SHELL (mobile-first) ───────────── */
+#app{display:none;min-height:100svh;flex-direction:column}
+
+/* sidebar: hidden drawer on mobile */
+#sidebar{
+  position:fixed;top:0;right:0;bottom:0;
+  width:min(280px,85vw);
+  background:var(--blue);color:#fff;
+  display:flex;flex-direction:column;
+  z-index:600;
+  transform:translateX(110%);
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+#sidebar.open{transform:translateX(0)}
+
+/* main: full width on mobile */
+#main{
+  flex:1;display:flex;flex-direction:column;
+  min-height:100svh;
+  padding-bottom:var(--bnav); /* space for bottom nav */
+}
+
+/* topbar */
+#topbar{
+  position:sticky;top:0;z-index:100;
+  background:#fff;border-bottom:1px solid var(--g200);
+  height:54px;padding:0 14px;
+  display:flex;align-items:center;gap:10px;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);flex-shrink:0;
+}
+.ptitle{font-size:16px;font-weight:800;color:var(--blue);flex:1;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#menu-btn{font-size:26px;color:var(--g600);padding:4px;flex-shrink:0;line-height:1}
+
+/* content */
+#content{flex:1;padding:14px;display:flex;flex-direction:column;gap:14px}
+
+/* bottom nav */
+#bnav{
+  position:fixed;bottom:0;left:0;right:0;
+  height:var(--bnav);background:#fff;
+  border-top:1px solid var(--g200);
+  display:flex;z-index:500;
+  box-shadow:0 -2px 12px rgba(0,0,0,.08);
+}
+.bn{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:2px;
+  font-size:10px;font-weight:700;color:var(--g400);
+  cursor:pointer;position:relative;
+  padding:6px 2px 8px;
+  transition:color .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.bn.on{color:var(--blum)}
+.bn .bi{font-size:22px;line-height:1;transition:transform .15s}
+.bn.on .bi{transform:scale(1.1)}
+.bndot{position:absolute;top:6px;right:calc(50% - 14px);
+       width:8px;height:8px;background:var(--red);
+       border-radius:50%;border:2px solid #fff}
+
+/* FAB */
+#fab{
+  position:fixed;bottom:calc(var(--bnav) + 12px);left:16px;
+  width:54px;height:54px;border-radius:50%;
+  background:var(--red);color:#fff;
+  font-size:30px;line-height:1;font-weight:300;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 18px rgba(220,38,38,.4);
+  z-index:400;transition:transform .15s,box-shadow .15s;
+}
+#fab:active{transform:scale(.92)}
+
+/* overlay */
+#ovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
+     z-index:595;backdrop-filter:blur(2px)}
+#ovl.on{display:block}
+
+/* ── SIDEBAR internals ──────────────────── */
+.sbl{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.12)}
+.sbl h1{font-size:16px;font-weight:800;color:#fff}
+.sbl p{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px}
+.sbu{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.12);
+     display:flex;align-items:center;gap:10px}
+.sbav{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);
+      display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.sbun{font-size:13px;font-weight:700;color:#fff}
+.sbur{font-size:11px;color:rgba(255,255,255,.5)}
+.sbnav{flex:1;padding:6px 0}
+.ni{display:flex;align-items:center;gap:11px;
+    padding:13px 16px;font-size:14px;font-weight:600;
+    color:rgba(255,255,255,.72);cursor:pointer;
+    border-right:3px solid transparent;transition:background .15s,color .15s}
+.ni:active,.ni:hover{background:rgba(255,255,255,.1);color:#fff}
+.ni.on{background:rgba(255,255,255,.14);color:#fff;border-right-color:#60a5fa;font-weight:800}
+.nib{font-size:18px;width:22px;text-align:center;flex-shrink:0}
+.nbadge{background:var(--red);color:#fff;font-size:10px;font-weight:800;
+        border-radius:10px;padding:1px 6px;margin-right:auto}
+.sbf{padding:12px 16px;border-top:1px solid rgba(255,255,255,.12)}
+.btn-out{width:100%;padding:10px;background:rgba(255,255,255,.1);
+         color:rgba(255,255,255,.7);border-radius:8px;font-size:13px;font-weight:700;
+         transition:background .15s}
+.btn-out:active{background:rgba(255,255,255,.2)}
+
+/* ── COMPONENTS ─────────────────────────── */
+/* cards */
+.card{background:#fff;border-radius:var(--r);box-shadow:var(--sh);padding:16px}
+.cardsm{background:#fff;border-radius:var(--r);box-shadow:var(--sh);padding:12px 14px}
+
+/* stat cards — 2-col on mobile */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sc{background:#fff;border-radius:var(--r);padding:14px;box-shadow:var(--sh);
+    border-right:4px solid;display:flex;flex-direction:column;gap:2px}
+.snum{font-size:28px;font-weight:900;line-height:1}
+.slbl{font-size:11px;color:var(--g600);line-height:1.4}
+.sc.sb{border-color:var(--blum)}.sc.sb .snum{color:var(--blum)}
+.sc.sr{border-color:var(--red)}.sc.sr .snum{color:var(--red)}
+.sc.so{border-color:var(--orange)}.sc.so .snum{color:var(--orange)}
+.sc.sg{border-color:var(--green)}.sc.sg .snum{color:var(--green)}
+.sc.sp{border-color:var(--purple)}.sc.sp .snum{color:var(--purple)}
+
+/* badges */
+.bx{display:inline-flex;align-items:center;font-size:11px;font-weight:700;
+    padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.xg{background:var(--greenl);color:var(--green)}
+.xo{background:var(--orangel);color:var(--orange)}
+.xr{background:var(--redl);color:var(--red)}
+.xb{background:var(--blul);color:var(--blum)}
+.xp{background:var(--purplel);color:var(--purple)}
+.xgr{background:var(--g100);color:var(--g600)}
+
+/* chips */
+.cx{display:inline-block;background:var(--g100);color:var(--g600);
+    border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;flex-shrink:0}
+.cxb{background:var(--blul);color:var(--blum)}
+.cxr{background:var(--redl);color:var(--red)}
+.cxo{background:var(--orangel);color:var(--orange)}
+.cxp{background:var(--purplel);color:var(--purple)}
+.cxg{background:var(--greenl);color:var(--green)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+     padding:11px 18px;border-radius:10px;font-size:14px;font-weight:700;
+     white-space:nowrap;cursor:pointer;
+     transition:transform .1s,opacity .15s;-webkit-appearance:none}
+.btn:active{transform:scale(.95)}
+.btnp{background:var(--blum);color:#fff}
+.btns{background:var(--green);color:#fff}
+.btnd{background:var(--red);color:#fff}
+.btno{background:transparent;border:1.5px solid var(--g200);color:var(--g600)}
+.btno:active,.btno:hover{border-color:var(--blum);color:var(--blum)}
+.btnsm{padding:8px 13px;font-size:12px;border-radius:8px}
+
+/* section title */
+.stitle{font-size:14px;font-weight:800;color:var(--blue);margin-bottom:12px;
+        display:flex;align-items:center;gap:7px}
+
+/* tabs */
+.tabs{display:flex;border-bottom:2px solid var(--g200);
+      overflow-x:auto;-webkit-overflow-scrolling:touch;
+      scrollbar-width:none;margin-bottom:14px;flex-shrink:0}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:10px 14px;font-size:13px;font-weight:700;color:var(--g400);
+     cursor:pointer;border-bottom:2px solid transparent;
+     margin-bottom:-2px;white-space:nowrap;transition:color .15s;flex-shrink:0}
+.tab.on{color:var(--blum);border-bottom-color:var(--blum)}
+
+/* alerts */
+.al{border-radius:10px;padding:11px 13px;display:flex;align-items:flex-start;
+    gap:8px;font-size:13px}
+.alr{background:var(--redl);color:#991b1b;border-right:3px solid var(--red)}
+.alo{background:var(--orangel);color:#9a3412;border-right:3px solid var(--orange)}
+.alb{background:var(--blul);color:#1e40af;border-right:3px solid var(--blum)}
+.alg{background:var(--greenl);color:#14532d;border-right:3px solid var(--green)}
+
+/* form group — always single column on mobile */
+.fgrid{display:flex;flex-direction:column;gap:12px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:800;color:var(--g600);
+          text-transform:uppercase;letter-spacing:.4px}
+.fc{border:1.5px solid var(--g200);border-radius:10px;
+    padding:12px 13px;font-size:16px;outline:none;width:100%;
+    background:#fff;transition:border-color .15s}
+.fc:focus{border-color:var(--blum);box-shadow:0 0 0 3px rgba(37,99,171,.1)}
+textarea.fc{resize:vertical;min-height:80px;font-size:15px}
+
+/* upload */
+.upload{border:2px dashed var(--g200);border-radius:10px;padding:20px 16px;
+        text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.upload:active{border-color:var(--blum);background:var(--blul)}
+.upload p{font-size:13px;color:var(--g600)}
+.upload .ui{font-size:28px;margin-bottom:6px}
+
+/* progress */
+.prog{background:var(--g200);border-radius:10px;height:8px;overflow:hidden}
+.progf{height:100%;border-radius:10px;transition:width .4s}
+
+/* timeline */
+.tl{position:relative;padding-right:22px}
+.tl::before{content:'';position:absolute;right:7px;top:4px;bottom:0;width:2px;background:var(--g200)}
+.tli{position:relative;padding-bottom:16px;padding-right:20px}
+.tld{position:absolute;right:-1px;top:4px;width:10px;height:10px;
+     border-radius:50%;border:2px solid #fff}
+.tdg{background:var(--green)}.tdr{background:var(--red)}
+.tdo{background:var(--orange)}.tdb{background:var(--blum)}
+.tldt{font-size:10px;color:var(--g400)}
+.tlt{font-size:12px;color:var(--g600);margin-top:1px}
+
+/* notif items */
+.nitem{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--g100);cursor:pointer}
+.nitem:last-child{border-bottom:none}
+.nico{width:40px;height:40px;border-radius:50%;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;font-size:18px}
+.nbody{flex:1;min-width:0}
+.ntit{font-size:13px;font-weight:700;line-height:1.3}
+.nmeta{font-size:11px;color:var(--g400);margin-top:2px}
+.nact{font-size:12px;color:var(--blum);font-weight:700;margin-top:4px}
+
+/* fault/apt cards (mobile-optimised) */
+.fcard{background:#fff;border-radius:var(--r);box-shadow:var(--sh);
+       padding:14px;display:flex;flex-direction:column;gap:10px;cursor:pointer}
+.fcard:active{background:var(--g50)}
+.frow{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.ftit{font-size:14px;font-weight:800;color:var(--blue)}
+.fsub{font-size:12px;color:var(--g600);margin-top:2px}
+.fdesc{font-size:13px;color:var(--g800);line-height:1.4}
+.ftags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+/* apt card */
+.acard{background:#fff;border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+.acard-hdr{padding:14px 16px 10px;border-bottom:1px solid var(--g100);
+           display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.aname{font-size:14px;font-weight:800;color:var(--blue);line-height:1.3}
+.asub{font-size:12px;color:var(--g600);margin-top:2px}
+.acard-body{padding:10px 16px}
+.ameta{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--g600)}
+.ameta span{display:flex;align-items:center;gap:6px}
+.achips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.acard-foot{
+  padding:12px 16px;border-top:1px solid var(--g100);
+  display:flex;gap:8px;background:var(--g50);
+}
+.acard-foot .btn{flex:1;padding:11px 6px;font-size:13px}
+
+/* insp card */
+.icard{background:#fff;border-radius:var(--r);box-shadow:var(--sh);padding:14px}
+.icard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px}
+.icard-tit{font-weight:800;font-size:14px;color:var(--blue)}
+.icard-sub{font-size:11px;color:var(--g400);margin-top:2px}
+.icard-bot{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* checklist */
+.cli{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid var(--g100)}
+.cli:last-child{border-bottom:none}
+.clilbl{font-size:14px;font-weight:600}
+.clibtn{display:flex;gap:6px;margin-top:2px}
+.csb{padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;
+     border:1.5px solid;background:transparent;cursor:pointer;transition:all .12s;flex:1;
+     -webkit-tap-highlight-color:transparent}
+.csbg{border-color:var(--green);color:var(--green)}.csbg.on{background:var(--green);color:#fff}
+.csbr{border-color:var(--red);color:var(--red)}.csbr.on{background:var(--red);color:#fff}
+.csbn{border-color:var(--g400);color:var(--g400)}.csbn.on{background:var(--g400);color:#fff}
+
+/* bar chart */
+.bchart{display:flex;align-items:flex-end;gap:6px;height:100px}
+.bcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bbar{width:100%;border-radius:5px 5px 0 0;min-height:4px;transition:height .5s}
+.blbl{font-size:10px;color:var(--g400)}
+.bval{font-size:10px;font-weight:800;color:var(--g600)}
+
+/* modal — bottom sheet on mobile */
+.movl{position:fixed;inset:0;background:rgba(0,0,0,.5);
+      z-index:1000;display:flex;align-items:flex-end;justify-content:center}
+.modal{background:#fff;width:100%;max-height:94svh;
+       border-radius:20px 20px 0 0;
+       overflow-y:auto;-webkit-overflow-scrolling:touch}
+.mhdr{padding:16px 18px 12px;border-bottom:1px solid var(--g200);
+      display:flex;align-items:center;justify-content:space-between;
+      position:sticky;top:0;background:#fff;z-index:1}
+.mhdr::before{content:'';display:block;width:36px;height:4px;
+              background:var(--g200);border-radius:2px;
+              position:absolute;top:8px;left:50%;transform:translateX(-50%)}
+.mhdr h2{font-size:15px;font-weight:800;color:var(--blue)}
+.mclose{width:30px;height:30px;border-radius:50%;background:var(--g100);
+        display:flex;align-items:center;justify-content:center;
+        font-size:18px;color:var(--g600);cursor:pointer;flex-shrink:0}
+.mbody{padding:16px 18px;display:flex;flex-direction:column;gap:13px}
+.mfoot{padding:14px 18px;border-top:1px solid var(--g200);
+       display:flex;flex-direction:column;gap:9px;
+       position:sticky;bottom:0;background:#fff;z-index:1}
+.mfoot .btn{width:100%;padding:14px}
+
+/* filter row */
+.frow-bar{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+          scrollbar-width:none;padding-bottom:2px;flex-shrink:0}
+.frow-bar::-webkit-scrollbar{display:none}
+.frow-bar .fc{width:auto;white-space:nowrap;flex-shrink:0;padding:9px 12px;font-size:13px}
+
+/* toast */
+.toast{position:fixed;bottom:calc(var(--bnav) + 12px);left:50%;
+       transform:translateX(-50%);
+       background:var(--blue);color:#fff;
+       padding:12px 20px;border-radius:12px;
+       font-size:14px;font-weight:700;z-index:9999;
+       box-shadow:var(--sh2);white-space:nowrap;
+       animation:tin .2s ease}
+@keyframes tin{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* empty state */
+.empty{text-align:center;padding:40px 16px;color:var(--g400)}
+.empty .ei{font-size:44px;margin-bottom:10px;opacity:.4}
+.empty p{font-size:14px}
+
+/* divider */
+.div{border:none;border-top:1px solid var(--g200);margin:4px 0}
+
+/* ── DESKTOP overrides (min 769px) ─────── */
+@media(min-width:769px){
+  #app{flex-direction:row}
+
+  /* sidebar always visible */
+  #sidebar{
+    position:relative;transform:none!important;
+    width:252px;flex-shrink:0;height:100svh;
+    overflow-y:auto;
+  }
+
+  #main{padding-bottom:0;height:100svh;overflow:hidden}
+
+  #topbar{padding:0 24px}
+  .topbar-search{display:flex!important}
+  .topbar-filters{display:flex!important}
+
+  #content{padding:22px;overflow-y:auto;flex:1}
+
+  #bnav{display:none!important}
+  #fab{display:none!important}
+  #menu-btn{display:none!important}
+  #ovl{display:none!important}
+
+  /* 2-col form grid on desktop */
+  .fgrid.d2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+  /* 2-col layout blocks */
+  .d2col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .d4col{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .d3col{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+
+  /* apt grid */
+  .aptgrid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))!important}
+
+  /* stat grid: 4 cols */
+  .stats{grid-template-columns:repeat(4,1fr)!important}
+
+  /* modal: centered dialog */
+  .movl{align-items:center;padding:20px}
+  .modal{border-radius:16px;max-width:580px;max-height:90svh}
+  .mhdr::before{display:none}
+  .mfoot{flex-direction:row}
+  .mfoot .btn{width:auto;flex:1;padding:11px 16px}
+
+  /* fault cards → table on desktop */
+  .dsk-table{display:block!important}
+  .mob-cards{display:none!important}
+
+  /* table */
+  table{min-width:unset}
+
+  .toast{bottom:20px}
+}
+
+/* tables – scrollable container, no min-width by default (mobile) */
+.twrap{overflow-x:auto;-webkit-overflow-scrolling:touch;
+       border-radius:var(--r);box-shadow:var(--sh);background:#fff}
+table{width:100%;border-collapse:collapse;min-width:560px}
+th{background:var(--g50);padding:9px 13px;text-align:right;
+   font-size:11px;font-weight:800;color:var(--g600);
+   border-bottom:1px solid var(--g200);white-space:nowrap;
+   text-transform:uppercase;letter-spacing:.3px}
+td{padding:11px 13px;font-size:13px;border-bottom:1px solid var(--g100);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+@media(min-width:769px){tr:hover td{background:var(--g50)}}
+
+/* apt grid container */
+.aptgrid{display:flex;flex-direction:column;gap:12px}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ─────────────────────────── -->
+<div id="login-screen">
+  <div class="lcard">
+    <div class="lhero">
+      <span class="ico">🏠</span>
+      <h1>מרכז מעשה</h1>
+      <p>מערכת ניהול דיור ארגונית</p>
+    </div>
+    <div class="lbody">
+      <form onsubmit="doLogin(event)" id="login-form">
+        <div class="fg">
+          <label>מספר טלפון</label>
+          <input type="tel" class="fc" id="li-phone" placeholder="05X-XXXXXXX"
+            autocomplete="tel" inputmode="tel">
+        </div>
+        <div id="login-err" style="display:none" class="al alr" style="font-size:13px">
+          <span>⚠️</span><span id="login-err-msg">מספר טלפון לא מזוהה במערכת</span>
+        </div>
+        <button type="submit" class="btn-login">כניסה למערכת →</button>
+      </form>
+    </div>
+    <div class="lfoot">
+      <p>כניסה מהירה לדמו</p>
+      <div class="demo-row">
+        <button class="dbtn" onclick="qlPhone('0528449565')"><span class="di">👑</span>מוטי עבדהו</button>
+        <button class="dbtn" onclick="qlPhone('0585270779')"><span class="di">👑</span>אבי מיכאלי</button>
+        <button class="dbtn" onclick="qlPhone('0521234567')"><span class="di">🔧</span>מנהל דיור</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── OVERLAY ────────────────────────── -->
+<div id="ovl" onclick="closeSB()"></div>
+
+<!-- ── APP ───────────────────────────── -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="sbl"><h1>🏠 מרכז מעשה</h1><p>ניהול דיור ארגוני</p></div>
+    <div class="sbu">
+      <div class="sbav" id="sbav">👤</div>
+      <div><div class="sbun" id="sbun">—</div><div class="sbur" id="sbur">—</div></div>
+    </div>
+    <nav class="sbnav" id="sbnav">
+      <div class="ni on" data-s="dashboard" onclick="go('dashboard')"><span class="nib">📊</span>דשבורד</div>
+      <div class="ni" data-s="apartments" onclick="go('apartments')"><span class="nib">🏘️</span>דירות</div>
+      <div class="ni" data-s="faults" onclick="go('faults')"><span class="nib">⚠️</span>תקלות<span class="nbadge">3</span></div>
+      <div class="ni" data-s="inspections" onclick="go('inspections')"><span class="nib">📋</span>ביקורות</div>
+      <div class="ni" data-s="history" onclick="go('history')"><span class="nib">📅</span>היסטוריה</div>
+      <div class="ni" data-s="notifications" onclick="go('notifications')"><span class="nib">🔔</span>התראות<span class="nbadge">5</span></div>
+      <div class="ni admin-only" data-s="users" onclick="go('users')"><span class="nib">👥</span>משתמשים</div>
+      <div class="ni admin-only" data-s="settings" onclick="go('settings')"><span class="nib">⚙️</span>הגדרות</div>
+    </nav>
+    <div class="sbf"><button class="btn-out" onclick="doLogout()">יציאה מהמערכת</button></div>
+  </aside>
+
+  <!-- MAIN -->
+  <main id="main">
+    <header id="topbar">
+      <button id="menu-btn" onclick="toggleSB()">☰</button>
+      <div class="ptitle" id="ptitle">דשבורד</div>
+      <!-- desktop only search/filters -->
+      <div class="topbar-search" style="display:none;align-items:center;background:var(--g100);border-radius:22px;padding:7px 14px;gap:7px">
+        <span style="color:var(--g400)">🔍</span>
+        <input style="background:none;border:none;outline:none;font-size:13px;width:150px" placeholder="חיפוש...">
+      </div>
+      <select class="topbar-filters fc" style="display:none;width:auto;padding:7px 10px;font-size:13px"
+        onchange="CF=this.value;if(CS==='apartments')go('apartments')">
+        <option value="">כל הערים</option>
+        <option>חיפה</option><option>עכו</option><option>קרית ביאליק</option>
+        <option>נטועה</option><option>ירושלים</option><option>דימונה</option>
+        <option>נתיבות</option><option>קרית שמונה</option>
+        <option>כפר יאסיף</option><option>מתחם/קיבוץ</option>
+        <option>אילת</option><option>רמלה</option><option>בת ים</option>
+        <option>כרמיאל</option><option>כפר חסידים</option><option>נס ציונה</option>
+        <option>נתניה</option><option>טבריה</option>
+      </select>
+    </header>
+
+    <div id="content"></div>
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav id="bnav">
+    <div class="bn on" data-s="dashboard" onclick="go('dashboard')"><span class="bi">📊</span>בית</div>
+    <div class="bn" data-s="apartments" onclick="go('apartments')"><span class="bi">🏘️</span>דירות</div>
+    <div class="bn" data-s="faults" onclick="go('faults')"><span class="bi">⚠️</span>תקלות<span class="bndot"></span></div>
+    <div class="bn" data-s="inspections" onclick="go('inspections')"><span class="bi">📋</span>ביקורות</div>
+    <div class="bn" data-s="notifications" onclick="go('notifications')"><span class="bi">🔔</span>התראות<span class="bndot"></span></div>
+  </nav>
+
+  <!-- FAB -->
+  <button id="fab" onclick="om('fault')" title="תקלה חדשה">＋</button>
+</div>
+
+<div id="mr"></div><!-- modal root -->
+
+<script>
+/* ── DATA ──────────────────────────────── */
+const APTS=[
+  {id:'a1',proj:'מכינת גל',city:'חיפה',addr:'המעפילים 16א דירה 2',type:'שכירות',lease:'22.8.26',ll:'פיני פרבר',ph:'',elec:'346057223',water:'9738',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a2',proj:'מכינת גל',city:'חיפה',addr:'המעפילים 16א דירה 8',type:'שכירות',lease:'31.7.26',ll:'מיכאל גבאי',ph:'',elec:'347529951',water:'9737',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a3',proj:'מכינת גל',city:'חיפה',addr:'ברון הירש 5 דירה 8',type:'שכירות',lease:'31.8.26',ll:'מרלין זיתון (מיופת כח)',ph:'',elec:'347590271',water:'12135',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a4',proj:'מכינת גל',city:'חיפה',addr:'אלנבי 112 דירה 3',type:'שכירות',lease:'13.9.26',ll:'אורן נחום (שאול- מיופה כח)',ph:'',elec:'347587772',water:'51121',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a5',proj:'מכינת גל',city:'חיפה',addr:'רחוב הזית 2 דירה 7',type:'שכירות',lease:'9.8.26',ll:'אתי ברקן',ph:'',elec:'346615338',water:'12976',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a6',proj:'מכינת גל',city:'חיפה',addr:'המגינים 118',type:'שכירות',lease:'11.9.26',ll:'אביבה וקסלברג',ph:'',elec:'347587902',water:'10654',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a7',proj:'מכינת גל',city:'חיפה',addr:'הזית 15/6',type:'שכירות',lease:'31.12.25',ll:'מוריס בנחמו',ph:'',elec:'348173488',water:'13080',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a8',proj:'מכינת גל',city:'חיפה',addr:'יצחק שדה 5א\\' דירה 8',type:'שכירות',lease:'30.6.26',ll:'מרינה קיריצ\\'נקו',ph:'',elec:'348481373',water:'14418',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a9',proj:'מכינת גל',city:'חיפה',addr:'ההגנה 55/5',type:'שכירות',lease:'31.8.26',ll:'רויטיך יוליה',ph:'',elec:'348591958',water:'7600',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a10',proj:'מכינת גל',city:'חיפה',addr:'הגנים 7 חיפה- מתחם המכינה',type:'שכירות',lease:'',ll:'',ph:'',elec:'348269914',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a11',proj:'מכינת גל',city:'עכו',addr:'חטיבת גולני 35/16',type:'שכירות',lease:'14.8.26',ll:'תמר אוחנה',ph:'',elec:'348276299',water:'19006877',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a12',proj:'מכינת גל',city:'עכו',addr:'האורן 14/19',type:'שכירות',lease:'31.7.26',ll:'סהר ימין',ph:'',elec:'348276291',water:'19008693',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a13',proj:'מכינת גל',city:'עכו',addr:'דרך הארבעה 45/39 עכו',type:'רשות',lease:'',ll:'',ph:'',elec:'348276400',water:'19002093',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a14',proj:'מכינת גל',city:'עכו',addr:'משה שרת 6  בית מעשה',type:'רשות',lease:'',ll:'',ph:'',elec:'346623486',water:'19016231',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a15',proj:'מכינת גל',city:'עכו',addr:'האשל 9/7',type:'רשות',lease:'',ll:'',ph:'',elec:'348275529',water:'19008329',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a16',proj:'מכינת גל',city:'עכו',addr:'האשל 3/31',type:'רשות',lease:'',ll:'',ph:'',elec:'348275560',water:'18020001032',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a17',proj:'מכינת גל',city:'עכו',addr:'האשל 3/32',type:'רשות',lease:'',ll:'',ph:'',elec:'348275561',water:'19008354',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a18',proj:'מכינת גל',city:'עכו',addr:'האשל 4/14',type:'רשות',lease:'',ll:'',ph:'',elec:'348276357',water:'19008276',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a19',proj:'מכינת גל',city:'עכו',addr:'אלקלעי 7/9',type:'רשות',lease:'',ll:'',ph:'',elec:'348276403',water:'19004281',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a20',proj:'מכינת גל',city:'עכו',addr:'הרצל 55/15 עכו',type:'רשות',lease:'',ll:'',ph:'',elec:'348275526',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a21',proj:'מכינת גל',city:'עכו',addr:'הרצל 55/16 עכו',type:'רשות',lease:'',ll:'',ph:'',elec:'348275525',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a22',proj:'מכינת גל',city:'עכו',addr:'משה שרת 9/8',type:'רשות',lease:'',ll:'',ph:'',elec:'348275564',water:'19007349',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a23',proj:'מכינת גל',city:'קרית ביאליק',addr:'ז\\'בוטינסקי 12 דירה 13',type:'שכירות',lease:'16.8.26',ll:'חיים ניימן',ph:'',elec:'345252612',water:'16016805',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a24',proj:'מכינת גל',city:'קרית ביאליק',addr:'גיורא 19',type:'שכירות',lease:'27.8.26',ll:'משה כהן',ph:'',elec:'345873547',water:'16016182',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a25',proj:'מכינת גל',city:'קרית ביאליק',addr:'פרישמן 5 דירה 12',type:'שכירות',lease:'31.7.26',ll:'נחמן רוטנברג',ph:'',elec:'347115133',water:'16018873',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a26',proj:'מכינת גל',city:'קרית ביאליק',addr:'פרישמן 7 דירה 16',type:'שכירות',lease:'31.8.26',ll:'משה שטיינמץ ( תיווך ישראל)',ph:'',elec:'348275563',water:'16018894',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a27',proj:'מכינת גל',city:'קרית ביאליק',addr:'י.ל פרץ',type:'שכירות',lease:'31.8.26',ll:'באבו אבייה',ph:'',elec:'348174641',water:'16018716',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a28',proj:'מכינת גל',city:'קרית ביאליק',addr:'אחד העם 8',type:'שכירות',lease:'19.8.25',ll:'טובה דותן',ph:'',elec:'348252264',water:'16015679',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a29',proj:'מכינת גל',city:'קרית ביאליק',addr:'ברנר 2 דירה 5',type:'שכירות',lease:'31.7.26',ll:'הרשקוביץ שילה',ph:'',elec:'347084713',water:'16015870',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a30',proj:'מכינת גל',city:'קרית ביאליק',addr:'ברנר 2 דירה 24',type:'שכירות',lease:'31.7.26',ll:'דימה רוסין',ph:'',elec:'349011921',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a31',proj:'מכינת גל',city:'נטועה',addr:'נטועה 81',type:'שכירות',lease:'1.7.26',ll:'גיא שאול (האבא דוד)',ph:'',elec:'349017964',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a32',proj:'מכינת גל',city:'נטועה',addr:'נטועה 7',type:'שכירות',lease:'14.8.26',ll:'רוחה זבאטני- ויטוריו (חיים) לגזיאל',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a33',proj:'מכינת גל',city:'נטועה',addr:'נטועה 28',type:'שכירות',lease:'14.8.26',ll:'ליאם וזיו יחיא',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a34',proj:'מכינת גל',city:'נטועה',addr:'נטועה 20',type:'שכירות',lease:'31.8.26',ll:'משה זוארץ',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a35',proj:'שנת שרות',city:'ירושלים',addr:'ההגנה 3/21, ירושלים',type:'שכירות',lease:'10.8.26',ll:'ערן ורדי',ph:'',elec:'348592083',water:'1742862',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a36',proj:'שנת שרות',city:'ירושלים',addr:'רחוב הגפן 228 (סטנדרט) - חניכים',type:'שכירות',lease:'31.7.26',ll:'שלמה ירד',ph:'',elec:'347529815',water:'1671204',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a37',proj:'שנת שרות',city:'דימונה',addr:'רחוב צבר 87, דימונה',type:'שכירות',lease:'15.8.26',ll:'שמעון בן לולו',ph:'',elec:'342462927',water:'11020134',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a38',proj:'שנת שרות',city:'עכו',addr:'אחד העם 19, עכו',type:'שכירות',lease:'31.7.25',ll:'אלי יום טוב',ph:'',elec:'349146471',water:'19004408',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a39',proj:'מכון מנהיגות',city:'חיפה',addr:'הציונות 39/24, חיפה',type:'שכירות',lease:'26.1.26',ll:'סעיד ניגם',ph:'',elec:'347336622',water:'94328',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a40',proj:'מכון מנהיגות',city:'חיפה',addr:'הציונות 39/29, חיפה',type:'שכירות',lease:'26.3.26',ll:'סעיד ניגם',ph:'',elec:'',water:'55705',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a41',proj:'מכון מנהיגות',city:'חיפה',addr:'יפו 106/47, חיפה',type:'שכירות',lease:'18.4.27',ll:'אלכס עבוד',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a42',proj:'מעשה בנגב',city:'נתיבות',addr:'ילדי אוסלו 1020 דירה 17',type:'שכירות',lease:'15.3.26',ll:'דניאל אלחרר',ph:'',elec:'348276356',water:'13004857',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a43',proj:'מעשה בנגב',city:'נתיבות',addr:'ילדי אוסלו 1020 דירה 11',type:'שכירות',lease:'15.3.26',ll:'אושרית ביטון',ph:'',elec:'345870103',water:'13005579',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a44',proj:'מעשה בנגב',city:'נתיבות',addr:'רמב\"ם 1083 דירה 10',type:'שכירות',lease:'15.3.26',ll:'מרים שפירא',ph:'',elec:'349146412',water:'13007639',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a45',proj:'מעשה בנגב',city:'נתיבות',addr:'ניסנית 37',type:'שכירות',lease:'31.8.26',ll:'נורית שמיר',ph:'',elec:'348232541',water:'10787246710',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a46',proj:'מעשה בנגב',city:'נתיבות',addr:'הגיבורים 528 דירה 12',type:'שכירות',lease:'15.3.26',ll:'נבעה אליה',ph:'',elec:'346650467',water:'11552812000',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a47',proj:'מעשה בנגב',city:'נתיבות',addr:'הגיבורים 528 דירה 13',type:'שכירות',lease:'15.3.26',ll:'גבאייה פנטה',ph:'',elec:'348275566',water:'13008612',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a48',proj:'מעשה קרית שמונה',city:'קרית שמונה',addr:'הרצל 33 דירה 9',type:'שכירות',lease:'31.7.26',ll:'חנה צדיק',ph:'',elec:'349011884',water:'60033009',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a49',proj:'מעשה קרית שמונה',city:'קרית שמונה',addr:'השופטים 8 דירה 2',type:'שכירות',lease:'14.8.26',ll:'שולמית לוי',ph:'',elec:'349170807',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a50',proj:'מעשה קרית שמונה',city:'קרית שמונה',addr:'עולי הגרדום 32/19',type:'שכירות',lease:'14.8.26',ll:'נעמה ויינטראוב',ph:'',elec:'349018000',water:'70502019',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a51',proj:'מעשה קרית שמונה',city:'קרית שמונה',addr:'עולי הגרדום 32/11',type:'שכירות',lease:'14.8.26',ll:'חופית פרץ',ph:'',elec:'349139819',water:'70502011',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a52',proj:'מעשה קרית שמונה',city:'קרית שמונה',addr:'עולי הגרדום 32/12',type:'שכירות',lease:'14.8.26',ll:'חופית פרץ',ph:'',elec:'349139903',water:'70502013',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a53',proj:'מעשה קרית שמונה',city:'קרית שמונה',addr:'הרצל 29 דירה 8',type:'שכירות',lease:'14.8.26',ll:'הרבנית דרורי',ph:'',elec:'347594088',water:'60029008',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a54',proj:'מכינה לחיים בנים',city:'כפר יאסיף',addr:'',type:'',lease:'',ll:'עבד אל האדי חטיב',ph:'',elec:'349300265',water:'349300265',mg:'',hm:'',st:'בהכנה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'a55',proj:'מכינה לחיים בנים',city:'כפר יאסיף',addr:'',type:'',lease:'',ll:'עבד אל האדי חטיב',ph:'',elec:'349300266',water:'349300266',mg:'',hm:'',st:'בהכנה',faults:0,ins:false,sheet:'תשפו'},
+  {id:'k1',proj:'קיבוץ שריד - רועות למרחקים',city:'מתחם/קיבוץ',addr:'נכס 71',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k2',proj:'קיבוץ שריד - רועות למרחקים',city:'מתחם/קיבוץ',addr:'נכס 72',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k3',proj:'מרחביה- בני גד',city:'מתחם/קיבוץ',addr:'מתחם בית ראשון במולדת',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k4',proj:'מרחביה- בני גד',city:'מתחם/קיבוץ',addr:'יסמין 10',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k5',proj:'מרחביה- בני גד',city:'מתחם/קיבוץ',addr:'יסמין 9',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k6',proj:'מרחביה- בני גד',city:'מתחם/קיבוץ',addr:'יסמין 8',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k7',proj:'מרחביה- בני גד',city:'מתחם/קיבוץ',addr:'יסמין 7',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k8',proj:'מרחביה- בני גד',city:'מתחם/קיבוץ',addr:'יסמין 6',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k9',proj:'מרחביה- בני גד',city:'מתחם/קיבוץ',addr:'יסמין 5',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k10',proj:'מרחביה- בני גד',city:'מתחם/קיבוץ',addr:'יסמין 4',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k11',proj:'מרחביה- בני גד',city:'מתחם/קיבוץ',addr:'יסמין 3',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k12',proj:'מרחביה- בני גד',city:'מתחם/קיבוץ',addr:'יסמין 2',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k13',proj:'מרחביה- בני גד',city:'מתחם/קיבוץ',addr:'נכס 290180',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k14',proj:'מרחביה- בני גד',city:'מתחם/קיבוץ',addr:'נכס 1311728618721',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k15',proj:'מזרע-מדרשה לחיים משותפים',city:'מתחם/קיבוץ',addr:'מבנה 9',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k16',proj:'כפר הנוער הודיות - מעוז הארז',city:'מתחם/קיבוץ',addr:'מבנה מכינה',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'k17',proj:'מחנה גדי בקעת הירדן- מכינת ליאל',city:'מתחם/קיבוץ',addr:'מבנה מכינה',type:'שכירות-מתחם',lease:'',ll:'',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'מתחמים-קיבוצים'},
+  {id:'r1',proj:'בוגרים',city:'עכו',addr:'הרצל 55/16, עכו',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r2',proj:'מכינת גל',city:'עכו',addr:'האשל 31/3 עכו',type:'רשות',lease:'',ll:'עמידר',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'עמידר'},
+  {id:'r3',proj:'מכינת גל',city:'עכו',addr:'האשל 32/3 עכו',type:'רשות',lease:'',ll:'עמידר',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'עמידר'},
+  {id:'r4',proj:'מכינת גל',city:'עכו',addr:'האשל 14/4 עכו',type:'רשות',lease:'',ll:'עמידר',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'עמידר'},
+  {id:'r5',proj:'מכינת גל',city:'עכו',addr:'האשל 9/7 עכו',type:'רשות',lease:'',ll:'עמידר',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'עמידר'},
+  {id:'r6',proj:'מכינת גל',city:'עכו',addr:'הרצל 55/15 עכו',type:'רשות',lease:'',ll:'עמידר',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'עמידר'},
+  {id:'r7',proj:'מכינת גל',city:'עכו',addr:'דרך הארבעה 45/39 עכו',type:'רשות',lease:'',ll:'עמידר',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'עמידר'},
+  {id:'r8',proj:'מכינת גל',city:'עכו',addr:'אלקלעי 7/9 עכו',type:'רשות',lease:'',ll:'עמידר',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'עמידר'},
+  {id:'r9',proj:'מכינת גל',city:'עכו',addr:'משה שרת 9/8 עכו',type:'רשות',lease:'',ll:'עמידר',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'עמידר'},
+  {id:'r10',proj:'משרדים מרכז מעשה',city:'עכו',addr:'משה שרת 6 עכו',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r11',proj:'מכינת גל',city:'ק. ביאליק',addr:'העלייה 6 - קרית ביאליק',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r12',proj:'מכינת גל',city:'ק. ביאליק',addr:'קק\"ל 65/21 - קרית ביאליק',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r13',proj:'מכינת גל',city:'ק. ביאליק',addr:'פרטיזנים 7 קרית ביאליק',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r14',proj:'מכינת גל',city:'ק. ביאליק',addr:'פרטיזנים 10 קרית ביאליק',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r15',proj:'מכינת גל',city:'חיפה',addr:'הגנים 7, חיפה',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r16',proj:'שנת שירות',city:'חיפה',addr:'הרב משאש 3 חיפה',type:'רשות',lease:'',ll:'מתנ\"ס נווה יוסף (רשות?)',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'מתנ\"ס נווה יוסף (רשות?)'},
+  {id:'r17',proj:'שנת שירות',city:'אילת',addr:'חשמונאים 5 דירה 11 אילת',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r18',proj:'שנת שירות',city:'אילת',addr:'עין נטפים 17 דירה 1 אילת',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r19',proj:'שנת שירות',city:'רמלה',addr:'רמבם 22 רמלה',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r20',proj:'שנת שירות',city:'בת ים',addr:'מ\"ג 13 בת ים',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r21',proj:'שנת שירות',city:'כרמיאל',addr:'כפר הילדים כרמיאל',type:'רשות',lease:'',ll:'מטעם הכפר',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'מטעם הכפר'},
+  {id:'r22',proj:'שנת שירות',city:'כפר חסידים',addr:'כפר הנוער כפר חסידים',type:'רשות',lease:'',ll:'מטעם הכפר',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'מטעם הכפר'},
+  {id:'r23',proj:'שנת שירות',city:'נס ציונה',addr:'כפר הנוער נווה יהודה נס ציונה',type:'רשות',lease:'',ll:'מטעם הכפר',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'מטעם הכפר'},
+  {id:'r24',proj:'מכינת מעשה בגליל',city:'קרית שמונה',addr:'סמטת המלכים 10, קרית שמונה',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r25',proj:'שנת שירות',city:'קרית שמונה',addr:'הרצל 29 קריית שמונה',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r26',proj:'שנת שירות',city:'נתניה',addr:'עמק חפר 81 נתניה',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r27',proj:'מכינת מעשה בנגב',city:'נתיבות',addr:'מלכי ישראל 69 נתיבות',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'},
+  {id:'r28',proj:'מכינת מעשה בגליל',city:'טבריה',addr:'רמח\"ל 10 טבריה',type:'רשות',lease:'',ll:'רשות',ph:'',elec:'',water:'',mg:'',hm:'',st:'פעילה',faults:0,ins:false,sheet:'רשות-תשפד',body:'רשות'}
+];
+const FAULTS=[
+  {id:'f1',aid:'a1',apt:'המעפילים 16א ד2',city:'חיפה',pr:'מכינת גל',rep:'יעל כהן',date:'15.6.26',cat:'אינסטלציה',desc:'נזילה מתחת לכיור במטבח',urg:'דחוף',rec:true,rn:3,st:'בטיפול',hn:'רוני לוי',note:'הוזמן אינסטלטור'},
+  {id:'f2',aid:'a1',apt:'המעפילים 16א ד2',city:'חיפה',pr:'מכינת גל',rep:'יעל כהן',date:'10.6.26',cat:'חשמל',desc:'שקע בחדר שינה לא עובד',urg:'רגיל',rec:false,st:'פתוחה',hn:'',note:''},
+  {id:'f3',aid:'a4',apt:'אלנבי 112 ד3',city:'חיפה',pr:'מכינת גל',rep:'נגה שרון',date:'20.6.26',cat:'מיזוג',desc:'מזגן לא מצנן — דחוף מאוד',urg:'דחוף מאוד',rec:false,st:'פתוחה',hn:'',note:''},
+  {id:'f4',aid:'a8',apt:'גולני 35/16',city:'עכו',pr:'מכינת גל',rep:'מאיה בן',date:'18.6.26',cat:'נזילה',desc:'נזילה בתקרה אחרי גשם',urg:'דחוף מאוד',rec:true,rn:2,st:'ממתינה לספק',hn:'רוני לוי',note:'נשלח בנאי'},
+  {id:'f5',aid:'a10',apt:"ז'בוטינסקי 12 ד13",city:'קרית ביאליק',pr:'מכינת גל',rep:'ליאת שר',date:'12.6.26',cat:'ריהוט',desc:'מיטה שבורה בחדר',urg:'רגיל',rec:false,st:'תוקנה',hn:'עמית כץ',note:'הוחלפה מיטה'},
+  {id:'f6',aid:'a19',apt:'הרצל 33 ד9',city:'קרית שמונה',pr:'מעשה קש',rep:'נעם שגב',date:'22.6.26',cat:'בטיחות',desc:'מעקה מרפסת רופף — סכנת נפשות',urg:'דחוף מאוד',rec:false,st:'פתוחה',hn:'',note:''},
+];
+const INSPS=[
+  {id:'i1',tp:'מנהל דירה',aid:'a1',apt:'המעפילים 16א ד2',city:'חיפה',mon:'יוני',yr:'2026',date:'5.6.26',ins:'יעל כהן',st:'בוצעה',sc:85},
+  {id:'i2',tp:'מנהל דיור',aid:'a1',apt:'המעפילים 16א ד2',city:'חיפה',mon:'יוני',yr:'2026',date:'12.6.26',ins:'רוני לוי',st:'בוצעה',sc:90},
+  {id:'i3',tp:'מנהל דירה',aid:'a2',apt:'המעפילים 16א ד8',city:'חיפה',mon:'יוני',yr:'2026',date:'',ins:'',st:'לא בוצעה',sc:0},
+  {id:'i4',tp:'מנהל דירה',aid:'a5',apt:'הזית 2 ד7',city:'חיפה',mon:'יוני',yr:'2026',date:'8.6.26',ins:'שירה ניר',st:'בוצעה',sc:95},
+  {id:'i5',tp:'מנהל דיור',aid:'a5',apt:'הזית 2 ד7',city:'חיפה',mon:'יוני',yr:'2026',date:'',ins:'',st:'לא בוצעה',sc:0},
+  {id:'i6',tp:'מנהל דירה',aid:'a8',apt:'גולני 35/16',city:'עכו',mon:'יוני',yr:'2026',date:'',ins:'',st:'לא בוצעה',sc:0},
+  {id:'i7',tp:'מנהל דירה',aid:'a13',apt:'ההגנה 3/21',city:'ירושלים',mon:'יוני',yr:'2026',date:'3.6.26',ins:'עדי כרמל',st:'באיחור',sc:70},
+  {id:'i8',tp:'מנהל דיור',aid:'a13',apt:'ההגנה 3/21',city:'ירושלים',mon:'יוני',yr:'2026',date:'14.6.26',ins:'אבי שרון',st:'בוצעה',sc:88},
+];
+const NOTIFS=[
+  {id:'n1',lv:'red',icon:'🚨',title:'תקלה דחופה — מזגן לא עובד',apt:'אלנבי 112 ד3',city:'חיפה',date:'20.6.26',act:'לטיפול',sc:'faults'},
+  {id:'n2',lv:'red',icon:'⚠️',title:'מעקה מרפסת רופף — בטיחות',apt:'הרצל 33 ד9',city:'קרית שמונה',date:'22.6.26',act:'לטיפול',sc:'faults'},
+  {id:'n3',lv:'orange',icon:'📋',title:'ביקורת מנהל דירה חסרה — יוני',apt:'המעפילים 16א ד8',city:'חיפה',date:'28.6.26',act:'לביקורת',sc:'inspections'},
+  {id:'n4',lv:'orange',icon:'📋',title:'ביקורת מנהל דיור חסרה — יוני',apt:'הזית 2 ד7',city:'חיפה',date:'28.6.26',act:'לביקורת',sc:'inspections'},
+  {id:'n5',lv:'orange',icon:'🏠',title:'דירה ללא מנהל דירה',apt:'אלנבי 112 ד3',city:'חיפה',date:'1.6.26',act:'לניהול',sc:'apartments'},
+  {id:'n6',lv:'blue',icon:'🔄',title:'תקלה חוזרת — פעם 3',apt:'המעפילים 16א ד2',city:'חיפה',date:'15.6.26',act:'לצפייה',sc:'faults'},
+];
+const USERS=[
+  {id:'u1',name:'מוטי עבדהו',phone:'0528449565',role:'superadmin',rh:'מנהל ראשי',title:'מנהל כספים',active:true,zone:'כל הארגון',addedBy:'מערכת',addedAt:'1.1.26'},
+  {id:'u2',name:'אבי מיכאלי',phone:'0585270779',role:'superadmin',rh:'מנהל ראשי',title:'מנהל ראשי',active:true,zone:'כל הארגון',addedBy:'מוטי עבדהו',addedAt:'1.1.26'},
+  {id:'u3',name:'רוני לוי',phone:'0521234567',role:'housing',rh:'מנהל דיור',title:'מנהל דיור',active:true,zone:'חיפה, עכו',addedBy:'מוטי עבדהו',addedAt:'5.1.26'},
+  {id:'u4',name:'עמית כץ',phone:'0531234567',role:'housing',rh:'מנהל דיור',title:'מנהל דיור',active:true,zone:'ק. ביאליק, ק. שמונה',addedBy:'אבי מיכאלי',addedAt:'5.1.26'},
+  {id:'u5',name:'אבי שרון',phone:'0541234567',role:'housing',rh:'מנהל דיור',title:'מנהל דיור',active:true,zone:'ירושלים, נתיבות, נטועה',addedBy:'מוטי עבדהו',addedAt:'6.1.26'},
+  {id:'u6',name:'יעל כהן',phone:'0501234567',role:'manager',rh:'מנהל דירה',title:'מנהל דירה',active:true,zone:'המעפילים 16א ד2',addedBy:'רוני לוי',addedAt:'10.1.26'},
+  {id:'u7',name:'דנה לוי',phone:'0511234567',role:'manager',rh:'מנהל דירה',title:'מנהל דירה',active:true,zone:'המעפילים 16א ד8',addedBy:'רוני לוי',addedAt:'10.1.26'},
+];
+const LOG=[
+  {ts:'28.6.26 10:15',user:'אורי מנחם',act:'עדכון דירה',apt:'המעפילים 16א ד2',ch:'שינוי מנהל דירה — יעל כהן'},
+  {ts:'22.6.26 14:30',user:'רוני לוי',act:'סגירת תקלה',apt:"ז'בוטינסקי 12 ד13",ch:'תקלת ריהוט תוקנה'},
+  {ts:'20.6.26 09:00',user:'נגה שרון',act:'פתיחת תקלה',apt:'אלנבי 112 ד3',ch:'תקלת מיזוג — דחוף מאוד'},
+  {ts:'15.6.26 11:20',user:'יעל כהן',act:'פתיחת תקלה',apt:'המעפילים 16א ד2',ch:'נזילה — תקלה חוזרת פעם 3'},
+  {ts:'12.6.26 16:00',user:'רוני לוי',act:'ביקורת דיור',apt:'המעפילים 16א ד2',ch:'ביקורת יוני 2026 — ציון 90'},
+  {ts:'5.6.26 08:45',user:'יעל כהן',act:'ביקורת דירה',apt:'המעפילים 16א ד2',ch:'ביקורת יוני 2026 — ציון 85'},
+];
+
+/* ── STATE ──────────────────────────────── */
+let CU=null,CS='dashboard',CF='',MF='';
+const RI={superadmin:'👑',admin:'👑',housing:'🔧',manager:'🏠'};
+const RL={superadmin:'מנהל ראשי',admin:'מנהל ארגון',housing:'מנהל דיור',manager:'מנהל דירה'};
+
+/* ── AUTH ────────────────────────────────── */
+function normalizePhone(p){
+  // strip spaces, dashes, +972 prefix → 05X format
+  p=p.replace(/[\s\-]/g,'');
+  if(p.startsWith('+972'))p='0'+p.slice(4);
+  if(p.startsWith('972'))p='0'+p.slice(3);
+  return p;
+}
+
+function doLogin(e){
+  e.preventDefault();
+  const raw=document.getElementById('li-phone').value.trim();
+  const phone=normalizePhone(raw);
+  const user=USERS.find(u=>normalizePhone(u.phone)===phone);
+  const errEl=document.getElementById('login-err');
+  if(!user){
+    errEl.style.display='flex';
+    document.getElementById('login-err-msg').textContent='מספר טלפון לא מזוהה במערכת';
+    document.getElementById('li-phone').focus();
+    return;
+  }
+  if(!user.active){
+    errEl.style.display='flex';
+    document.getElementById('login-err-msg').textContent='משתמש זה אינו פעיל — פנה למנהל המערכת';
+    return;
+  }
+  errEl.style.display='none';
+  loginAs(user);
+}
+
+function qlPhone(phone){
+  document.getElementById('li-phone').value=phone;
+  doLogin({preventDefault:()=>{}});
+}
+// keep old ql for backward compat (demo)
+function ql(r){
+  const m={admin:'0528449565',housing:'0521234567',apt:'0501234567'};
+  qlPhone(m[r]||m.admin);
+}
+
+function loginAs(user){
+  CU=user;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('sbav').textContent=RI[CU.role];
+  document.getElementById('sbun').textContent=CU.name;
+  document.getElementById('sbur').textContent=CU.title||RL[CU.role];
+  // superadmin = full access, admin = full access, others restricted
+  const isAdmin=CU.role==='superadmin'||CU.role==='admin';
+  document.querySelectorAll('.admin-only').forEach(e=>
+    e.style.display=isAdmin?'flex':'none');
+  go('dashboard');
+}
+
+function doLogout(){
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('li-phone').value='';
+  document.getElementById('login-err').style.display='none';
+  CU=null;
+}
+
+function isSuperAdmin(){return CU&&(CU.role==='superadmin')}
+function isAdmin(){return CU&&(CU.role==='superadmin'||CU.role==='admin')}
+
+/* ── NAV ──────────────────────────────────── */
+const TITLES={dashboard:'דשבורד',apartments:'דירות',faults:'תקלות',
+  inspections:'ביקורות',history:'היסטוריה',notifications:'התראות',
+  users:'משתמשים',settings:'הגדרות'};
+
+function go(s){
+  CS=s;
+  document.getElementById('ptitle').textContent=TITLES[s]||s;
+  document.querySelectorAll('[data-s]').forEach(e=>e.classList.toggle('on',e.dataset.s===s));
+  closeSB();
+  const c=document.getElementById('content');
+  c.innerHTML='';// clear first
+  c.innerHTML=render(s);
+  c.scrollTop=0;
+}
+function render(s){
+  const m={dashboard:rDash,apartments:rApts,faults:rFaults,
+    inspections:rInsps,history:rHist,notifications:rNotifs,
+    users:rUsers,settings:rSetts};
+  return(m[s]||rDash)();
+}
+
+/* ── SIDEBAR ─────────────────────────────── */
+function toggleSB(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('ovl').classList.toggle('on');
+}
+function closeSB(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('ovl').classList.remove('on');
+}
+
+/* ── HELPERS ─────────────────────────────── */
+const ub=u=>u==='דחוף מאוד'?'xr':u==='דחוף'?'xo':'xb';
+const sb=s=>s==='פעילה'?'xg':s==='עזבנו'||s==='לא פעילה'?'xr':s==='בהכנה'?'xo':'xgr';
+const fb=s=>s==='תוקנה'||s==='נסגרה'?'xg':s==='פתוחה'?'xr':s==='בטיפול'?'xo':s==='ממתינה לספק'?'xp':'xgr';
+const ib=s=>s==='בוצעה'?'xg':s==='לא בוצעה'?'xr':s==='באיחור'?'xo':'xgr';
+const bx=(c,t)=>`<span class="bx ${c}">${t}</span>`;
+const cx=(c,t)=>`<span class="cx${c?' cx'+c:''}">${t}</span>`;
+
+function toast(msg,bg=''){
+  const t=document.createElement('div');
+  t.className='toast';
+  if(bg)t.style.background=bg;
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+/* ── MODAL ─────────────────────────────────── */
+function om(type,id){
+  if(type==='fault')return mFault(id||'');
+  if(type==='fault-v')return mFaultV(id);
+  if(type==='insp')return mInsp(id||'');
+  if(type==='apt-v')return mAptV(id);
+  if(type==='apt-add')return mAptAdd();
+  if(type==='apt-edit')return mAptEdit(id);
+  if(type==='user-add')return mUserAdd();
+  if(type==='user-edit')return mUserEdit(id);
+}
+function sm(html){document.getElementById('mr').innerHTML=`<div class="movl" onclick="if(event.target===this)cm()">${html}</div>`}
+function cm(){document.getElementById('mr').innerHTML=''}
+
+/* ════════════════════════════════════════════
+   SCREENS
+   ════════════════════════════════════════════ */
+
+/* ── DASHBOARD ── */
+function rDash(){
+  const act=APTS.filter(a=>a.st==='פעילה').length;
+  // Real breakdown by sheet
+  const aptsTashpav=APTS.filter(a=>a.sheet==='תשפו').length;
+  const aptsKibbutz=APTS.filter(a=>a.sheet==='מתחמים-קיבוצים').length;
+  const aptsRashut=APTS.filter(a=>a.sheet==='רשות-תשפד').length;
+  const opF=FAULTS.filter(f=>!['תוקנה','נסגרה'].includes(f.st)).length;
+  const urgF=FAULTS.filter(f=>f.urg==='דחוף מאוד'&&f.st==='פתוחה').length;
+  const misI=INSPS.filter(i=>i.st==='לא בוצעה').length;
+  const recF=FAULTS.filter(f=>f.rec).length;
+  const noMg=APTS.filter(a=>!a.mg&&a.st==='פעילה').length;
+  const months=['ינו','פבר','מרץ','אפר','מאי','יוני'];
+  const vals=[4,7,3,8,5,6];
+  const mx=Math.max(...vals);
+  const sc=INSPS.filter(i=>i.tp==='מנהל דירה'&&i.st==='בוצעה').length;
+  const st=INSPS.filter(i=>i.tp==='מנהל דירה').length;
+  const hc=INSPS.filter(i=>i.tp==='מנהל דיור'&&i.st==='בוצעה').length;
+  const ht=INSPS.filter(i=>i.tp==='מנהל דיור').length;
+
+  return`
+<div class="stats">
+  <div class="sc sb"><div class="snum">${APTS.length}</div><div class="slbl">סה"כ נכסים במערכת</div></div>
+  <div class="sc sr"><div class="snum">${opF}</div><div class="slbl">תקלות פתוחות</div></div>
+  <div class="sc so"><div class="snum">${urgF}</div><div class="slbl">תקלות דחופות</div></div>
+  <div class="sc sg"><div class="snum">${misI}</div><div class="slbl">ביקורות חסרות</div></div>
+  <div class="sc sp"><div class="snum">${recF}</div><div class="slbl">תקלות חוזרות</div></div>
+  <div class="sc so"><div class="snum">${noMg}</div><div class="slbl">נכסים ללא מנהל</div></div>
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+  <div class="card" style="flex:1;min-width:0;padding:12px;display:flex;flex-direction:column;gap:2px">
+    <div style="font-size:11px;color:var(--g400);font-weight:800;text-transform:uppercase">שכירות תשפ"ו</div>
+    <div style="font-size:22px;font-weight:900;color:var(--blum)">${aptsTashpav}</div>
+  </div>
+  <div class="card" style="flex:1;min-width:0;padding:12px;display:flex;flex-direction:column;gap:2px">
+    <div style="font-size:11px;color:var(--g400);font-weight:800;text-transform:uppercase">מתחמי קיבוצים</div>
+    <div style="font-size:22px;font-weight:900;color:var(--green)">${aptsKibbutz}</div>
+  </div>
+  <div class="card" style="flex:1;min-width:0;padding:12px;display:flex;flex-direction:column;gap:2px">
+    <div style="font-size:11px;color:var(--g400);font-weight:800;text-transform:uppercase">רשות / עמידר</div>
+    <div style="font-size:22px;font-weight:900;color:var(--purple)">${aptsRashut}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="stitle">🔔 התראות חשובות</div>
+  ${NOTIFS.slice(0,4).map(n=>`
+    <div class="al al${n.lv==='red'?'r':n.lv==='orange'?'o':'b'}"
+      style="margin-bottom:8px;cursor:pointer" onclick="go('${n.sc}')">
+      <span>${n.icon}</span>
+      <div style="min-width:0">
+        <div style="font-weight:700;font-size:13px">${n.title}</div>
+        <div style="font-size:11px;opacity:.75;margin-top:1px">${n.apt} · ${n.city}</div>
+      </div>
+    </div>`).join('')}
+  <button class="btn btno btnsm" onclick="go('notifications')" style="margin-top:6px">כל ההתראות ←</button>
+</div>
+
+<div class="card">
+  <div class="stitle">📊 תקלות לפי חודש 2026</div>
+  <div class="bchart">
+    ${vals.map((v,i)=>`<div class="bcol">
+      <div class="bval">${v}</div>
+      <div class="bbar" style="height:${Math.round(v/mx*80)+10}px;background:${v>6?'var(--red)':v>4?'var(--orange)':'var(--blum)'}"></div>
+      <div class="blbl">${months[i]}</div>
+    </div>`).join('')}
+  </div>
+</div>
+
+<div class="card">
+  <div class="stitle">📋 ביקורות יוני 2026</div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    ${[
+      {lbl:'ביקורות מנהל דירה',n:sc,t:st,c:'var(--green)'},
+      {lbl:'ביקורות מנהל דיור',n:hc,t:ht,c:'var(--blum)'},
+    ].map(b=>`<div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px">
+        <span>${b.lbl}</span><b style="color:${b.c}">${b.n}/${b.t}</b>
+      </div>
+      <div class="prog"><div class="progf" style="width:${Math.round(b.n/b.t*100)}%;background:${b.c}"></div></div>
+    </div>`).join('')}
+  </div>
+</div>
+
+<div class="card">
+  <div class="stitle">⚠️ תקלות פתוחות</div>
+  ${FAULTS.filter(f=>!['תוקנה','נסגרה'].includes(f.st)).slice(0,4).map(f=>`
+    <div onclick="om('fault-v','${f.id}')"
+      style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--g100);cursor:pointer">
+      ${bx(ub(f.urg),f.urg)}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.desc}</div>
+        <div style="font-size:11px;color:var(--g400)">${f.apt} · ${f.city}</div>
+      </div>
+      ${bx(fb(f.st),f.st)}
+    </div>`).join('')}
+  <button class="btn btno btnsm" onclick="go('faults')" style="margin-top:10px">כל התקלות ←</button>
+</div>
+
+<div class="card">
+  <div class="stitle">📋 פעולות אחרונות</div>
+  ${LOG.slice(0,5).map(l=>`
+    <div style="display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--g100)">
+      <div style="flex-shrink:0;font-size:11px;color:var(--g400);min-width:70px">${l.ts}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700">${l.user}</div>
+        <div style="font-size:12px;color:var(--g600)">${l.ch}</div>
+      </div>
+      ${cx('',l.act)}
+    </div>`).join('')}
+</div>`;
+}
+
+/* ── APARTMENTS ── */
+let SF=''; // sheet filter
+let TF=''; // type filter
+function rApts(){
+  const filtered=APTS.filter(a=>
+    (!CF||a.city===CF)&&
+    (!MF||a.proj===MF)&&
+    (!SF||a.sheet===SF)&&
+    (!TF||a.type===TF)
+  );
+  const cities=[...new Set(APTS.map(a=>a.city))].filter(Boolean).sort();
+  const projs=[...new Set(APTS.map(a=>a.proj))].filter(Boolean).sort();
+  const sheets=[...new Set(APTS.map(a=>a.sheet))].filter(Boolean);
+  const types=[...new Set(APTS.map(a=>a.type))].filter(Boolean);
+  return`
+<div class="frow-bar">
+  <select class="fc" onchange="CF=this.value;go('apartments')">
+    <option value="">כל הערים (${[...new Set(APTS.map(a=>a.city))].filter(Boolean).length})</option>
+    ${cities.map(c=>`<option ${CF===c?'selected':''}>${c}</option>`).join('')}
+  </select>
+  <select class="fc" onchange="MF=this.value;go('apartments')">
+    <option value="">כל התוכניות</option>
+    ${projs.map(p=>`<option ${MF===p?'selected':''}>${p}</option>`).join('')}
+  </select>
+  <select class="fc" onchange="SF=this.value;go('apartments')">
+    <option value="">כל המקורות</option>
+    <option value="תשפו" ${SF==='תשפו'?'selected':''}>תשפ"ו (שכירות)</option>
+    <option value="מתחמים-קיבוצים" ${SF==='מתחמים-קיבוצים'?'selected':''}>מתחמי קיבוצים</option>
+    <option value="רשות-תשפד" ${SF==='רשות-תשפד'?'selected':''}>רשות / עמידר (תשפ"ד)</option>
+  </select>
+  <select class="fc" onchange="TF=this.value;go('apartments')">
+    <option value="">כל הסוגים</option>
+    ${types.map(t=>`<option ${TF===t?'selected':''}>${t}</option>`).join('')}
+  </select>
+  ${isAdmin()?`<button class="btn btnp btnsm" onclick="om('apt-add')" style="flex-shrink:0">＋ חדשה</button>`:''}
+</div>
+
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+  <div style="font-size:13px;font-weight:700;color:var(--g600)">${filtered.length} נכסים מוצגים</div>
+  <div style="font-size:11px;color:var(--g400)">מתוך ${APTS.length} סה"כ</div>
+  <div style="display:flex;gap:6px;margin-right:auto;flex-wrap:wrap">
+    ${cx('','שכירות: '+APTS.filter(a=>a.type==='שכירות').length)}
+    ${cx('','רשות: '+APTS.filter(a=>a.type==='רשות').length)}
+    ${cx('','מתחמים: '+APTS.filter(a=>a.type==='שכירות-מתחם').length)}
+  </div>
+</div>
+
+<div class="aptgrid">
+${filtered.map(a=>`
+  <div class="acard">
+    <div class="acard-hdr">
+      <div style="min-width:0">
+        <div class="aname">${a.proj||'—'}</div>
+        <div class="asub">📍 ${a.city}${a.addr?' — '+a.addr:''}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+        ${bx(sb(a.st),a.st)}
+        ${cx(a.type==='שכירות'?'b':a.type==='רשות'?'p':'o', a.type||'—')}
+      </div>
+    </div>
+    <div class="acard-body">
+      <div class="ameta">
+        ${a.ll?`<span>🏠 ${a.ll}</span>`:''}
+        ${a.lease?`<span>📅 סיום שכירות: <b>${a.lease}</b></span>`:''}
+        ${a.elec?`<span>⚡ מונה חשמל: <span style="font-family:monospace;font-size:12px">${a.elec}</span></span>`:''}
+        ${a.water?`<span>💧 מונה מים: <span style="font-family:monospace;font-size:12px">${a.water}</span></span>`:''}
+        <span>👤 ${a.mg||`<b style="color:var(--red)">מנהל לא שויך</b>`}</span>
+        ${a.hm?`<span>🔧 ${a.hm}</span>`:''}
+      </div>
+      <div class="achips" style="margin-top:8px">
+        ${a.faults>0?cx('r',`⚠️ ${a.faults} תקלות`):cx('g','✅ אין תקלות')}
+        ${a.ins?cx('g','✔ ביקורת בוצעה'):cx('o','⚠ ביקורת חסרה')}
+        ${cx('',a.sheet==='תשפו'?'תשפ"ו':a.sheet==='מתחמים-קיבוצים'?'קיבוץ':'רשות')}
+      </div>
+    </div>
+    <div class="acard-foot">
+      <button class="btn btno" onclick="om('apt-v','${a.id}')">👁 צפייה</button>
+      <button class="btn btnd" onclick="om('fault','${a.id}')">⚠ תקלה</button>
+      ${CU.role!=='manager'?`<button class="btn btnp" onclick="om('insp','${a.id}')">📋 ביקורת</button>`:''}
+    </div>
+  </div>`).join('')}
+</div>`;}
+
+/* ── FAULTS ── */
+function rFaults(){
+  const data=CU.role==='manager'?FAULTS.filter(f=>f.rep===CU.name):FAULTS;
+  return`
+<div class="frow-bar">
+  <select class="fc"><option>כל הסטטוסים</option><option>פתוחה</option><option>בטיפול</option><option>ממתינה לספק</option><option>תוקנה</option></select>
+  <select class="fc"><option>כל הדחיפויות</option><option>דחוף מאוד</option><option>דחוף</option><option>רגיל</option></select>
+  <select class="fc"><option>כל הקטגוריות</option><option>אינסטלציה</option><option>חשמל</option><option>מיזוג</option><option>נזילה</option><option>בטיחות</option></select>
+  <button class="btn btnd btnsm" onclick="om('fault')" style="flex-shrink:0">＋ תקלה</button>
+</div>
+${data.map(f=>`
+  <div class="fcard" onclick="om('fault-v','${f.id}')">
+    <div class="frow">
+      <div style="min-width:0">
+        <div class="ftit">${f.apt}</div>
+        <div class="fsub">${f.city} · ${f.cat} · ${f.date}</div>
+      </div>
+      ${bx(fb(f.st),f.st)}
+    </div>
+    <div class="fdesc">${f.desc}</div>
+    <div class="ftags">
+      ${bx(ub(f.urg),f.urg)}
+      ${f.rec?bx('xp','🔄 חוזרת ×'+f.rn):''}
+      ${f.hn?`<span style="font-size:12px;color:var(--g400)">מטפל: ${f.hn}</span>`:''}
+    </div>
+  </div>`).join('')}`;
+}
+
+/* ── INSPECTIONS ── */
+function rInsps(){
+  return`
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+  <div class="tabs" style="margin:0;flex:1">
+    <div class="tab on" onclick="setIT('all',this)">הכל</div>
+    <div class="tab" onclick="setIT('מנהל דירה',this)">מנהל דירה</div>
+    <div class="tab" onclick="setIT('מנהל דיור',this)">מנהל דיור</div>
+  </div>
+  <button class="btn btnp btnsm" onclick="om('insp')">＋ ביקורת</button>
+</div>
+<div id="il">${rIL('all')}</div>`;
+}
+function setIT(t,el){
+  document.querySelectorAll('.tabs .tab').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('il').innerHTML=rIL(t);
+}
+function rIL(t){
+  const data=t==='all'?INSPS:INSPS.filter(i=>i.tp===t);
+  return data.map(i=>`
+    <div class="icard">
+      <div class="icard-top">
+        <div>
+          <div class="icard-tit">${i.apt}</div>
+          <div class="icard-sub">${i.city} · ${i.mon} ${i.yr}</div>
+        </div>
+        ${bx(ib(i.st),i.st)}
+      </div>
+      <div class="icard-bot">
+        ${cx('',i.tp)}
+        ${i.sc?`<b style="color:${i.sc>=85?'var(--green)':i.sc>=60?'var(--orange)':'var(--red)'};font-size:14px">${i.sc}%</b>`:''}
+        ${i.ins?`<span style="font-size:12px;color:var(--g600)">${i.ins}</span>`:''}
+        ${i.st==='לא בוצעה'?`<button class="btn btnp btnsm" onclick="om('insp','${i.aid}')" style="margin-right:auto">בצע עכשיו</button>`:''}
+      </div>
+    </div>`).join('');
+}
+
+/* ── HISTORY ── */
+function rHist(){
+  return`
+<div class="tabs">
+  <div class="tab on" onclick="setHT('s',this)">סקירה</div>
+  <div class="tab" onclick="setHT('f',this)">תקלות</div>
+  <div class="tab" onclick="setHT('i',this)">ביקורות</div>
+  <div class="tab" onclick="setHT('t',this)">ציר זמן</div>
+</div>
+<div id="htc">${rHS()}</div>`;
+}
+function setHT(t,el){
+  document.querySelectorAll('.tabs .tab').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+  const m={s:rHS,f:rHF,i:rHI,t:rHT};
+  document.getElementById('htc').innerHTML=m[t]();
+}
+function rHS(){
+  return`
+<div style="display:flex;flex-direction:column;gap:10px">
+  ${[{y:'2024',f:32,i:78,p:82},{y:'2025',f:41,i:96,p:88},{y:'2026',f:17,i:48,p:75}].map(x=>`
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div style="font-size:24px;font-weight:900;color:var(--blue)">${x.y}</div>
+      <div style="display:flex;gap:14px;font-size:13px">
+        <span>⚠️ <b>${x.f}</b> תקלות</span>
+        <span>📋 <b>${x.i}</b> ביקורות</span>
+        <span style="color:${x.p>=85?'var(--green)':'var(--orange)'}">✅ <b>${x.p}%</b></span>
+      </div>
+    </div>`).join('')}
+</div>
+<div class="card" style="margin-top:0">
+  <div class="stitle">קטגוריות תקלות נפוצות</div>
+  ${[['אינסטלציה',28],['חשמל',22],['מיזוג',15],['נזילה',14],['ריהוט',11]].map(([c,n])=>`
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+        <span>${c}</span><b>${n}</b>
+      </div>
+      <div class="prog"><div class="progf" style="width:${Math.round(n/28*100)}%;background:var(--blum)"></div></div>
+    </div>`).join('')}
+</div>
+<div class="card" style="margin-top:0">
+  <div class="stitle">דירות בעייתיות</div>
+  ${[...APTS].sort((a,b)=>b.faults-a.faults).slice(0,5).map((a,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--g100)">
+      <span style="font-weight:900;color:var(--g400);width:18px;font-size:13px">${i+1}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.addr}</div>
+        <div style="font-size:11px;color:var(--g400)">${a.city}</div>
+      </div>
+      ${cx('r',''+a.faults)}
+    </div>`).join('')}
+</div>`;
+}
+function rHF(){
+  return`
+<div class="frow-bar">
+  <select class="fc"><option>2026</option><option>2025</option><option>2024</option></select>
+  <select class="fc"><option>כל החודשים</option><option>יוני</option><option>מאי</option></select>
+  <select class="fc"><option>כל הערים</option><option>חיפה</option><option>עכו</option></select>
+</div>
+${FAULTS.map(f=>`
+  <div class="fcard" onclick="om('fault-v','${f.id}')">
+    <div class="frow">
+      <div><div class="ftit">${f.apt}</div><div class="fsub">${f.city} · ${f.date}</div></div>
+      ${bx(fb(f.st),f.st)}
+    </div>
+    <div class="ftags">${cx('',f.cat)}${bx(ub(f.urg),f.urg)}</div>
+  </div>`).join('')}`;
+}
+function rHI(){return rIL('all')}
+function rHT(){
+  return`
+<div class="frow-bar">
+  <select class="fc">${APTS.map(a=>`<option>${a.addr} — ${a.city}</option>`).join('')}</select>
+</div>
+<div class="card">
+  <div class="stitle">🕐 ציר זמן — המעפילים 16א ד2</div>
+  <div class="tl">
+    <div class="tli"><div class="tld tdr"></div><div class="tldt">15.6.26</div><div class="tlt">⚠️ נזילה דחופה — חוזרת פעם 3</div></div>
+    <div class="tli"><div class="tld tdb"></div><div class="tldt">12.6.26</div><div class="tlt">📋 ביקורת מנהל דיור — ציון 90</div></div>
+    <div class="tli"><div class="tld tdg"></div><div class="tldt">5.6.26</div><div class="tlt">📋 ביקורת מנהל דירה — ציון 85</div></div>
+    <div class="tli"><div class="tld tdo"></div><div class="tldt">10.5.26</div><div class="tlt">⚠️ תקלת חשמל — תוקנה</div></div>
+    <div class="tli"><div class="tld tdb"></div><div class="tldt">3.5.26</div><div class="tlt">📋 ביקורת מנהל דירה מאי — ציון 92</div></div>
+    <div class="tli"><div class="tld tdr"></div><div class="tldt">12.4.26</div><div class="tlt">⚠️ נזילה חוזרת — פעם 2</div></div>
+    <div class="tli"><div class="tld tdg"></div><div class="tldt">15.1.26</div><div class="tlt">👤 שינוי מנהל דירה — יעל כהן</div></div>
+  </div>
+</div>`;
+}
+
+/* ── NOTIFICATIONS ── */
+function rNotifs(){
+  const ord={red:0,orange:1,blue:2};
+  const s=[...NOTIFS].sort((a,b)=>ord[a.lv]-ord[b.lv]);
+  return`
+<div class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div class="stitle" style="margin:0">🔔 התראות (${s.length})</div>
+    <button class="btn btno btnsm">סמן כנקרא</button>
+  </div>
+  ${s.map(n=>`
+    <div class="nitem" onclick="go('${n.sc}')">
+      <div class="nico" style="background:${n.lv==='red'?'var(--redl)':n.lv==='orange'?'var(--orangel)':'var(--blul)'}">${n.icon}</div>
+      <div class="nbody">
+        <div class="ntit">${n.title}</div>
+        <div class="nmeta">${n.apt} · ${n.city} · ${n.date}</div>
+        <div class="nact">${n.act} ←</div>
+      </div>
+      ${bx(n.lv==='red'?'xr':n.lv==='orange'?'xo':'xb',n.lv==='red'?'דחוף':n.lv==='orange'?'דורש טיפול':'מידע')}
+    </div>`).join('')}
+</div>`;
+}
+
+/* ── USERS & PERMISSIONS ── */
+function rUsers(){
+  if(!isAdmin())return`<div class="empty"><div class="ei">🔒</div><p>גישה למנהל ראשי בלבד</p></div>`;
+  const roleColor={superadmin:'xr',admin:'xr',housing:'xb',manager:'xg'};
+  const roleLabel={superadmin:'מנהל ראשי 👑',admin:'מנהל ארגון',housing:'מנהל דיור',manager:'מנהל דירה'};
+  return`
+<div class="card" style="background:linear-gradient(135deg,var(--blue) 0%,var(--blum) 100%);color:#fff;padding:16px 18px">
+  <div style="font-size:13px;opacity:.75;margin-bottom:4px">ניהול הרשאות</div>
+  <div style="font-size:18px;font-weight:800">מנהלים ראשיים</div>
+  <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+    ${USERS.filter(u=>u.role==='superadmin').map(u=>`
+      <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:12px;display:flex;align-items:center;gap:10px">
+        <div style="font-size:26px">👑</div>
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:15px">${u.name}</div>
+          <div style="font-size:12px;opacity:.75">${u.title} · ${u.phone}</div>
+        </div>
+        <span style="background:rgba(255,255,255,.2);color:#fff;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">ראשי</span>
+      </div>`).join('')}
+  </div>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+  <div class="stitle" style="margin:0">👥 כל המשתמשים (${USERS.length})</div>
+  ${isSuperAdmin()?`<button class="btn btnp btnsm" onclick="om('user-add')">＋ הוסף משתמש</button>`:''}
+</div>
+
+${USERS.map(u=>`
+  <div class="card" style="padding:14px">
+    <div style="display:flex;align-items:flex-start;gap:12px">
+      <div style="font-size:28px;flex-shrink:0">${RI[u.role]||'👤'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-weight:800;font-size:15px">${u.name}</span>
+          ${bx(roleColor[u.role]||'xgr', roleLabel[u.role]||u.rh)}
+          ${bx(u.active?'xg':'xr',u.active?'פעיל':'מושבת')}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:5px">
+          <span style="font-size:13px">📞</span>
+          <a href="tel:${u.phone}" style="font-size:13px;font-weight:700;color:var(--blum)">${u.phone}</a>
+        </div>
+        <div style="font-size:12px;color:var(--g400);margin-top:3px">
+          ${u.zone?`📍 ${u.zone}`:''}
+        </div>
+        <div style="font-size:11px;color:var(--g400);margin-top:4px">
+          הוסף ע"י ${u.addedBy} · ${u.addedAt}
+        </div>
+      </div>
+      ${isAdmin()?`
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+        <button class="btn btno btnsm" onclick="om('user-edit','${u.id}')">✏️ ערוך</button>
+        ${u.role!=='superadmin'||isSuperAdmin()?`
+        <button class="btn btnsm ${u.active?'btnd':'btns'}"
+          onclick="toggleUserActive('${u.id}')">
+          ${u.active?'🚫 השבת':'✅ הפעל'}
+        </button>`:''}
+      </div>`:''}
+    </div>
+  </div>`).join('')}
+
+<div class="card">
+  <div class="stitle">🔐 מטריצת הרשאות</div>
+  <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+  <table style="min-width:420px">
+    <thead>
+      <tr>
+        <th>פעולה</th>
+        <th style="text-align:center">מנהל ראשי</th>
+        <th style="text-align:center">מנהל דיור</th>
+        <th style="text-align:center">מנהל דירה</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${[
+        ['צפייה בכל הדירות','✅','✅','רק שלו'],
+        ['הוספת דירה חדשה','✅','—','—'],
+        ['עריכת פרטי דירה','✅','—','—'],
+        ['סימון דירה כעזבנו','✅','—','—'],
+        ['פתיחת תקלה','✅','✅','✅'],
+        ['עדכון סטטוס תקלה','✅','✅','—'],
+        ['סגירת תקלה','✅','✅','—'],
+        ['ביקורת מנהל דירה','✅','—','✅'],
+        ['ביקורת מנהל דיור','✅','✅','—'],
+        ['ניהול משתמשים','✅','—','—'],
+        ['שינוי הרשאות','✅','—','—'],
+        ['צפייה בלוג פעולות','✅','—','—'],
+        ['ייצוא דוחות','✅','—','—'],
+      ].map(([act,sa,hm,mg])=>`
+        <tr>
+          <td style="font-size:13px">${act}</td>
+          <td style="text-align:center;font-size:14px">${sa}</td>
+          <td style="text-align:center;font-size:14px">${hm}</td>
+          <td style="text-align:center;font-size:14px">${mg}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="stitle">📋 לוג פעולות</div>
+  ${LOG.map(l=>`
+    <div style="padding:9px 0;border-bottom:1px solid var(--g100)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="font-weight:700;font-size:13px">${l.user}</div>
+        <div style="font-size:11px;color:var(--g400)">${l.ts}</div>
+      </div>
+      <div style="font-size:12px;color:var(--g600);margin-top:2px">${l.ch}</div>
+      ${cx('',l.act)}
+    </div>`).join('')}
+</div>`;
+}
+
+function toggleUserActive(uid){
+  const u=USERS.find(x=>x.id===uid);
+  if(!u)return;
+  if(u.role==='superadmin'&&!isSuperAdmin()){toast('רק מנהל ראשי יכול לשנות סטטוס של מנהל ראשי','var(--red)');return}
+  u.active=!u.active;
+  LOG.unshift({ts:new Date().toLocaleString('he-IL'),user:CU.name,act:'שינוי סטטוס',apt:'—',ch:`${u.name} — ${u.active?'הופעל':'הושבת'}`});
+  go('users');
+  toast(`${u.name} ${u.active?'הופעל ✓':'הושבת ✓'}`,u.active?'var(--green)':'var(--red)');
+}
+
+/* ── SETTINGS ── */
+function rSetts(){
+  return`
+<div class="card">
+  <div class="stitle">⚙️ הגדרות מערכת</div>
+  <div class="fgrid">
+    <div class="fg"><label>ימים לפני התראה על תקלה פתוחה</label><input class="fc" type="number" value="7"></div>
+    <div class="fg"><label>ימי אזהרה לביקורת חסרה</label><input class="fc" type="number" value="5"></div>
+  </div>
+  <button class="btn btnp" style="margin-top:14px;width:100%" onclick="toast('הגדרות נשמרו ✓','var(--green)')">💾 שמור הגדרות</button>
+</div>
+<div class="card">
+  <div class="stitle">📥 ייבוא דירות מ-Excel</div>
+  <div class="upload" onclick="document.getElementById('xlsin').click()">
+    <div class="ui">📂</div>
+    <p style="font-weight:700">לחץ לבחירת קובץ Excel</p>
+    <p style="font-size:12px;color:var(--g400);margin-top:4px">קובץ_דיור_לקלאוד.xlsx נתמך</p>
+  </div>
+  <input type="file" id="xlsin" accept=".xlsx,.xls" style="display:none">
+  <div style="margin-top:10px;background:var(--g50);border-radius:8px;padding:10px;font-size:12px;color:var(--g600)">
+    <b>עמודות נדרשות:</b> פרוייקט, עיר, רחוב, סוג נכס, תאריך סיום שכירות, שם משכיר, נייד
+  </div>
+  <button class="btn btns" style="margin-top:10px;width:100%" onclick="toast('יובאו 41 דירות מהקובץ ✓','var(--green)')">📂 ייבא מהקובץ שהועלה</button>
+</div>
+<div class="card">
+  <div class="stitle">📤 ייצוא נתונים</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <button class="btn btno" style="width:100%" onclick="toast('מייצא תקלות...')">📊 תקלות לאקסל</button>
+    <button class="btn btno" style="width:100%" onclick="toast('מייצא ביקורות...')">📊 ביקורות לאקסל</button>
+    <button class="btn btno" style="width:100%" onclick="toast('מייצא דירות...')">📊 דירות לאקסל</button>
+  </div>
+</div>`;
+}
+
+/* ════════════════════════════════════════════
+   MODALS
+   ════════════════════════════════════════════ */
+
+/* ── New Fault ── */
+function mFault(aid){
+  sm(`<div class="modal">
+    <div class="mhdr"><h2>⚠️ דיווח תקלה חדשה</h2><button class="mclose" onclick="cm()">✕</button></div>
+    <div class="mbody">
+      <div class="fg"><label>דירה *</label>
+        <select class="fc" id="nf-apt">
+          <option value="">— בחר דירה —</option>
+          ${APTS.map(a=>`<option value="${a.id}" ${a.id===aid?'selected':''}>${a.addr} · ${a.city}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>קטגוריה *</label>
+        <select class="fc" id="nf-cat">
+          <option>אינסטלציה</option><option>חשמל</option><option>מיזוג</option>
+          <option>מנעול / דלת</option><option>ריהוט</option><option>ניקיון</option>
+          <option>בטיחות</option><option>נזילה</option><option>חלונות / תריסים</option><option>אחר</option>
+        </select>
+      </div>
+      <div class="fg"><label>דחיפות *</label>
+        <select class="fc" id="nf-urg">
+          <option>רגיל</option><option>דחוף</option><option>דחוף מאוד</option>
+        </select>
+      </div>
+      <div class="fg"><label>תיאור התקלה *</label>
+        <textarea class="fc" id="nf-desc" placeholder="תאר את התקלה בפירוט..."></textarea>
+      </div>
+      <div class="fg"><label>תקלה חוזרת?</label>
+        <select class="fc" id="nf-rec" onchange="document.getElementById('rec-x').style.display=this.value==='כן'?'flex':'none'">
+          <option value="לא">לא</option><option value="כן">כן</option>
+        </select>
+      </div>
+      <div id="rec-x" style="display:none;flex-direction:column;gap:12px">
+        <div class="fg"><label>כמה פעמים חזרה?</label><input class="fc" type="number" id="nf-rn" min="2" value="2"></div>
+        <div class="fg"><label>המלצה לפתרון קבוע</label><textarea class="fc" id="nf-rf" placeholder="הצעה לפתרון שורשי..."></textarea></div>
+      </div>
+      <div class="upload"><div class="ui">📷</div><p>צרף תמונות (אופציונלי)</p><p style="font-size:11px;color:var(--g400);margin-top:3px">ניתן לצלם עם המצלמה</p></div>
+      <div class="fg"><label>שם מלא של המדווח *</label>
+        <input class="fc" id="nf-name" value="${CU.name}" placeholder="שם פרטי ושם משפחה">
+      </div>
+      <div class="al alb" style="font-size:12px">📅 תאריך ושעה: ${new Date().toLocaleString('he-IL')}</div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btnd" onclick="subFault()">📤 שלח דיווח תקלה</button>
+      <button class="btn btno" onclick="cm()">ביטול</button>
+    </div>
+  </div>`);
+}
+function subFault(){
+  const apt=document.getElementById('nf-apt').value;
+  const desc=document.getElementById('nf-desc').value.trim();
+  const name=document.getElementById('nf-name').value.trim();
+  if(!apt){toast('יש לבחור דירה','var(--red)');return}
+  if(!desc){toast('יש למלא תיאור','var(--red)');return}
+  if(!name){toast('שם מלא הוא שדה חובה!','var(--red)');return}
+  const a=APTS.find(x=>x.id===apt);
+  FAULTS.unshift({id:'f'+(FAULTS.length+1),aid:apt,apt:a.addr,city:a.city,pr:a.pr,
+    rep:name,date:new Date().toLocaleDateString('he-IL'),
+    cat:document.getElementById('nf-cat').value,
+    desc,urg:document.getElementById('nf-urg').value,
+    rec:document.getElementById('nf-rec').value==='כן',
+    rn:parseInt(document.getElementById('nf-rn')?.value||1),
+    st:'פתוחה',hn:'',note:''});
+  a.faults++;
+  cm();go('faults');
+  toast('התקלה נשלחה בהצלחה ✓','var(--green)');
+}
+
+/* ── Fault View ── */
+function mFaultV(id){
+  const f=FAULTS.find(x=>x.id===id);
+  const can=CU.role==='housing'||isAdmin();
+  sm(`<div class="modal">
+    <div class="mhdr"><h2>⚠️ תקלה — ${f.cat}</h2><button class="mclose" onclick="cm()">✕</button></div>
+    <div class="mbody">
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        ${bx(ub(f.urg),f.urg)}${bx(fb(f.st),f.st)}
+        ${f.rec?bx('xp','🔄 חוזרת ×'+f.rn):''}
+      </div>
+      <div class="cardsm">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+          <div><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">דירה</div><b>${f.apt}</b></div>
+          <div><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">עיר</div><b>${f.city}</b></div>
+          <div><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">מדווח</div><b>${f.rep}</b></div>
+          <div><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">תאריך</div><b>${f.date}</b></div>
+        </div>
+      </div>
+      <div class="cardsm"><b>תיאור:</b><p style="margin-top:4px;font-size:13px;color:var(--g600)">${f.desc}</p></div>
+      ${f.note?`<div class="cardsm"><b>הערת טיפול:</b><p style="margin-top:4px;font-size:13px;color:var(--g600)">${f.note}</p></div>`:''}
+      ${can?`
+      <div class="div"></div>
+      <div class="stitle" style="margin-bottom:8px">עדכון טיפול</div>
+      <div class="fg"><label>סטטוס</label>
+        <select class="fc" id="fv-st">
+          ${['פתוחה','בטיפול','ממתינה לספק','תוקנה','נסגרה'].map(s=>`<option ${f.st===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>שם המטפל *</label>
+        <input class="fc" id="fv-hn" value="${f.hn}" placeholder="שם מלא — חובה">
+      </div>
+      <div class="fg"><label>הערת טיפול</label>
+        <textarea class="fc" id="fv-note" placeholder="פרטי הטיפול...">${f.note}</textarea>
+      </div>
+      <div class="upload"><div class="ui">📷</div><p>תמונה אחרי תיקון</p></div>`:''}
+    </div>
+    <div class="mfoot">
+      ${can?`
+        <button class="btn btns" onclick="saveFV('${f.id}','תוקנה')">✅ סמן כתוקן</button>
+        <button class="btn btnp" onclick="saveFV('${f.id}')">💾 שמור עדכון</button>`:''}
+      <button class="btn btno" onclick="cm()">סגור</button>
+    </div>
+  </div>`);
+}
+function saveFV(id,force){
+  const n=document.getElementById('fv-hn').value.trim();
+  if(!n){toast('שם מלא חובה!','var(--red)');return}
+  const i=FAULTS.findIndex(f=>f.id===id);
+  if(i>=0){FAULTS[i].st=force||document.getElementById('fv-st').value;
+           FAULTS[i].hn=n;FAULTS[i].note=document.getElementById('fv-note').value}
+  cm();go('faults');
+  toast(force==='תוקנה'?'תקלה סומנה כתוקנה ✓':'עדכון נשמר ✓','var(--green)');
+}
+
+/* ── Apt View ── */
+function mAptV(id){
+  const a=APTS.find(x=>x.id===id);
+  const af=FAULTS.filter(f=>f.aid===id);
+  const ai=INSPS.filter(i=>i.aid===id);
+  sm(`<div class="modal">
+    <div class="mhdr"><h2>🏠 ${a.addr}</h2><button class="mclose" onclick="cm()">✕</button></div>
+    <div class="mbody">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">עיר</div><b style="font-size:14px">${a.city}</b></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">סטטוס</div><div style="margin-top:4px">${bx(sb(a.st),a.st)}</div></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">סוג נכס</div><b>${a.type||'—'}</b></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">מקור נתונים</div><b>${a.sheet==='תשפו'?'שכירות תשפ"ו':a.sheet==='מתחמים-קיבוצים'?'מתחמי קיבוצים':'רשות/עמידר תשפ"ד'}</b></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">תכנית / פרויקט</div><b>${a.proj||'—'}</b></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">סיום שכירות</div><b>${a.lease||'—'}</b></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">בעל נכס / גוף</div><b>${a.ll||'—'}</b></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">טלפון</div>${a.ph?`<a href="tel:${a.ph}" style="color:var(--blum);font-weight:700">${a.ph}</a>`:'<span style="color:var(--g400)">—</span>'}</div>
+        ${a.elec?`<div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">⚡ מונה חשמל</div><b style="font-family:monospace">${a.elec}</b></div>`:''}
+        ${a.water?`<div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">💧 מונה מים</div><b style="font-family:monospace">${a.water}</b></div>`:''}
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">מנהל דירה</div><b>${a.mg||'<span style="color:var(--red)">לא שויך</span>'}</b></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">מנהל דיור</div><b>${a.hm||'—'}</b></div>
+      </div>
+      <div class="div"></div>
+      <div class="stitle" style="margin-bottom:8px">⚠️ תקלות (${af.length})</div>
+      ${af.length?af.map(f=>`
+        <div style="display:flex;gap:8px;align-items:center;padding:9px;background:var(--g50);border-radius:9px;margin-bottom:6px;cursor:pointer" onclick="cm();om('fault-v','${f.id}')">
+          ${bx(fb(f.st),f.st)}${bx(ub(f.urg),f.urg)}
+          <span style="flex:1;font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.desc}</span>
+        </div>`).join(''):`<div class="empty" style="padding:16px"><div class="ei" style="font-size:30px">✅</div><p>אין תקלות</p></div>`}
+      <div class="stitle" style="margin-bottom:8px">📋 ביקורות (${ai.length})</div>
+      ${ai.length?ai.map(i=>`
+        <div style="display:flex;gap:8px;align-items:center;padding:9px;background:var(--g50);border-radius:9px;margin-bottom:6px">
+          ${cx('',i.tp)}${bx(ib(i.st),i.st)}
+          <span style="flex:1;font-size:12px">${i.mon} ${i.yr}</span>
+          <span style="font-size:11px;color:var(--g400)">${i.ins||'—'}</span>
+        </div>`).join(''):`<div class="empty" style="padding:16px"><div class="ei" style="font-size:30px">📋</div><p>אין ביקורות</p></div>`}
+    </div>
+    <div class="mfoot">
+      <button class="btn btnd" onclick="cm();om('fault','${a.id}')">⚠ דווח תקלה</button>
+      ${CU.role!=='manager'?`<button class="btn btnp" onclick="cm();om('insp','${a.id}')">📋 ביקורת</button>`:''}
+      ${isAdmin()?`<button class="btn btno" onclick="cm();om('apt-edit','${a.id}')">✏️ עריכה</button>`:''}
+    </div>
+  </div>`);
+}
+
+/* ── Inspection ── */
+const CL=['מצב ניקיון כללי','חשמל תקין','מים ואינסטלציה','אין נזילות','דלתות ומנעולים','חלונות ותריסים','מטבח','שירותים ומקלחת','ריהוט','מזגנים','בטיחות כללית','ציוד חסר'];
+function mInsp(aid){
+  sm(`<div class="modal">
+    <div class="mhdr"><h2>📋 ביקורת חודשית</h2><button class="mclose" onclick="cm()">✕</button></div>
+    <div class="mbody">
+      <div class="fg"><label>דירה *</label>
+        <select class="fc">${APTS.map(a=>`<option ${a.id===aid?'selected':''}>${a.addr} · ${a.city}</option>`).join('')}</select>
+      </div>
+      <div class="fg"><label>סוג ביקורת *</label>
+        <select class="fc"><option>ביקורת מנהל דירה</option><option>ביקורת מנהל דיור</option></select>
+      </div>
+      <div class="fg"><label>חודש</label>
+        <select class="fc"><option>יולי</option><option>יוני</option><option>אוגוסט</option></select>
+      </div>
+      <div class="fg"><label>שנה</label><input class="fc" value="2026"></div>
+      <div class="div"></div>
+      <div class="stitle" style="margin-bottom:8px">רשימת בדיקה</div>
+      <div>
+        ${CL.map((item,i)=>`
+          <div class="cli" id="cl-${i}">
+            <div class="clilbl">${item}</div>
+            <div class="clibtn">
+              <button class="csb csbg" onclick="setCS(${i},'ok',this)">✓ תקין</button>
+              <button class="csb csbr" onclick="setCS(${i},'bad',this)">✗ לא תקין</button>
+              <button class="csb csbn" onclick="setCS(${i},'na',this)">— לא רלוונטי</button>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div class="fg"><label>הערות</label><textarea class="fc" placeholder="הערות נוספות..."></textarea></div>
+      <div class="upload"><div class="ui">📷</div><p>תמונות מהשטח</p></div>
+      <div class="fg"><label>שם מלא של מבצע הביקורת *</label>
+        <input class="fc" id="insp-n" value="${CU.name}">
+      </div>
+      <div class="al alb" style="font-size:12px">📅 תאריך: ${new Date().toLocaleDateString('he-IL')}</div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btns" onclick="subInsp()">💾 שמור ביקורת</button>
+      <button class="btn btno" onclick="cm()">ביטול</button>
+    </div>
+  </div>`);
+}
+function setCS(i,v,btn){
+  btn.closest('.clibtn').querySelectorAll('.csb').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const row=document.getElementById('cl-'+i);
+  const ex=row.querySelector('.cl-fault-btn');
+  if(v==='bad'&&!ex){
+    const b=document.createElement('button');
+    b.className='btn btnd btnsm cl-fault-btn';
+    b.style.marginTop='8px';b.textContent='⚠ פתח תקלה';
+    b.onclick=()=>{cm();om('fault')};
+    row.appendChild(b);
+  }else if(v!=='bad'&&ex)ex.remove();
+}
+function subInsp(){
+  const n=document.getElementById('insp-n').value.trim();
+  if(!n){toast('שם מלא חובה!','var(--red)');return}
+  cm();toast('הביקורת נשמרה בהצלחה ✓','var(--green)');
+}
+
+/* ── Add Apt ── */
+function mAptAdd(){
+  sm(`<div class="modal">
+    <div class="mhdr"><h2>🏠 הוספת דירה חדשה</h2><button class="mclose" onclick="cm()">✕</button></div>
+    <div class="mbody">
+      <div class="fg"><label>מקור / גיליון *</label>
+        <select class="fc">
+          <option value="תשפו">תשפ"ו — שכירות פרטיות</option>
+          <option value="מתחמים-קיבוצים">מתחמי קיבוצים</option>
+          <option value="רשות-תשפד">רשות / עמידר תשפ"ד</option>
+        </select>
+      </div>
+      <div class="fg"><label>תכנית / פרויקט *</label>
+        <select class="fc">
+          <option>מכינת גל</option><option>שנת שירות</option>
+          <option>מכון מנהיגות</option><option>מעשה בנגב</option>
+          <option>מעשה קרית שמונה</option><option>מכינה לחיים בנים</option>
+          <option>קיבוץ שריד - רועות למרחקים</option><option>מרחביה- בני גד</option>
+          <option>מזרע-מדרשה לחיים משותפים</option><option>כפר הנוער הודיות - מעוז הארז</option>
+          <option>מחנה גדי בקעת הירדן- מכינת ליאל</option>
+        </select>
+      </div>
+      <div class="fg"><label>סוג נכס *</label>
+        <select class="fc"><option>שכירות</option><option>רשות</option><option>שכירות-מתחם</option></select>
+      </div>
+      <div class="fg"><label>עיר *</label>
+        <select class="fc">
+          <option>חיפה</option><option>עכו</option><option>קרית ביאליק</option>
+          <option>ירושלים</option><option>נתיבות</option><option>קרית שמונה</option>
+          <option>דימונה</option><option>נטועה</option><option>כפר יאסיף</option>
+          <option>אילת</option><option>רמלה</option><option>בת ים</option>
+          <option>כרמיאל</option><option>נס ציונה</option><option>נתניה</option><option>טבריה</option>
+        </select>
+      </div>
+      <div class="fg"><label>כתובת מלאה *</label><input class="fc" placeholder="רחוב, מספר, דירה..."></div>
+      <div class="fg"><label>שם בעל הנכס / גוף</label><input class="fc" placeholder="שם בעל דירה / רשות / עמידר..."></div>
+      <div class="fg"><label>טלפון בעל נכס</label><input class="fc" type="tel"></div>
+      <div class="fg"><label>תאריך סיום שכירות</label><input class="fc" type="date"></div>
+      <div class="fg"><label>⚡ מספר מונה חשמל</label><input class="fc" type="text" inputmode="numeric" placeholder="לדוגמה: 347529951"></div>
+      <div class="fg"><label>💧 מספר מונה מים</label><input class="fc" type="text" inputmode="numeric" placeholder="לדוגמה: 9737"></div>
+      <div class="fg"><label>מנהל דירה</label>
+        <select class="fc"><option value="">— לא שויך —</option>${USERS.filter(u=>u.role==='manager').map(u=>`<option>${u.name}</option>`).join('')}</select>
+      </div>
+      <div class="fg"><label>מנהל דיור</label>
+        <select class="fc"><option value="">— לא שויך —</option>${USERS.filter(u=>u.role==='housing').map(u=>`<option>${u.name}</option>`).join('')}</select>
+      </div>
+      <div class="div"></div>
+      <div class="al alo" style="font-size:12px"><span>⚠</span><span>כל שמירה מחייבת שם מלא</span></div>
+      <div class="fg"><label>שם המוסיף *</label><input class="fc" id="aa-n" value="${CU.name}"></div>
+      <div class="fg"><label>הערה / סיבה</label><input class="fc" placeholder="לדוגמה: חוזה נחתם..."></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btnp" onclick="if(!document.getElementById('aa-n').value.trim()){toast('שם חובה','var(--red)');return}cm();toast('הדירה נוספה ✓','var(--green)')">💾 הוסף דירה</button>
+      <button class="btn btno" onclick="cm()">ביטול</button>
+    </div>
+  </div>`);
+}
+
+/* ── Edit Apt ── */
+function mAptEdit(id){
+  const a=APTS.find(x=>x.id===id);
+  sm(`<div class="modal">
+    <div class="mhdr"><h2>✏️ עריכת דירה</h2><button class="mclose" onclick="cm()">✕</button></div>
+    <div class="mbody">
+      <div class="fg"><label>מכינה</label><input class="fc" value="${a.pr}"></div>
+      <div class="fg"><label>עיר</label><input class="fc" value="${a.city}"></div>
+      <div class="fg"><label>כתובת</label><input class="fc" value="${a.addr}"></div>
+      <div class="fg"><label>מנהל דירה</label>
+        <select class="fc">
+          <option ${!a.mg?'selected':''}>— לא שויך —</option>
+          ${USERS.filter(u=>u.role==='manager').map(u=>`<option ${u.name===a.mg?'selected':''}>${u.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>מנהל דיור</label>
+        <select class="fc">${USERS.filter(u=>u.role==='housing').map(u=>`<option ${u.name===a.hm?'selected':''}>${u.name}</option>`).join('')}</select>
+      </div>
+      <div class="fg"><label>סטטוס</label>
+        <select class="fc">${['פעילה','לא פעילה','עזבנו','בהכנה'].map(s=>`<option ${a.st===s?'selected':''}>${s}</option>`).join('')}</select>
+      </div>
+      <div class="div"></div>
+      <div class="al alo" style="font-size:12px"><span>⚠</span><span>כל עדכון מחייב שם מלא וסיבה</span></div>
+      <div class="fg"><label>שם המעדכן *</label><input class="fc" id="ea-n" value="${CU.name}"></div>
+      <div class="fg"><label>סיבת העדכון *</label><input class="fc" id="ea-r" placeholder="מה השתנה ולמה..."></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btnp" onclick="saveAE('${a.id}')">💾 שמור</button>
+      <button class="btn btnd" onclick="if(confirm('לסמן כעזבנו?')){cm();toast('הדירה סומנה כעזבנו ✓')}">🚪 עזבנו</button>
+      <button class="btn btno" onclick="cm()">ביטול</button>
+    </div>
+  </div>`);
+}
+function saveAE(id){
+  const n=document.getElementById('ea-n').value.trim();
+  const r=document.getElementById('ea-r').value.trim();
+  if(!n){toast('שם מלא חובה!','var(--red)');return}
+  if(!r){toast('סיבת העדכון חובה!','var(--red)');return}
+  cm();go('apartments');toast('הדירה עודכנה ✓','var(--green)');
+}
+
+/* ── Add User ── */
+function mUserAdd(){
+  if(!isAdmin()){toast('אין הרשאה להוסיף משתמשים','var(--red)');return}
+  sm(`<div class="modal">
+    <div class="mhdr"><h2>👤 הוספת משתמש חדש</h2><button class="mclose" onclick="cm()">✕</button></div>
+    <div class="mbody">
+      <div class="fg"><label>שם מלא *</label>
+        <input class="fc" id="nu-name" placeholder="שם פרטי ושם משפחה">
+      </div>
+      <div class="fg"><label>מספר טלפון * (זיהוי כניסה)</label>
+        <input class="fc" id="nu-phone" type="tel" placeholder="05X-XXXXXXX" inputmode="tel">
+      </div>
+      <div class="fg"><label>תפקיד / כותרת</label>
+        <input class="fc" id="nu-title" placeholder="לדוגמה: מנהל דיור צפון">
+      </div>
+      <div class="fg"><label>הרשאה במערכת *</label>
+        <select class="fc" id="nu-role" onchange="updateRoleHint(this.value)">
+          ${isSuperAdmin()?`<option value="superadmin">👑 מנהל ראשי — גישה מלאה לכל</option>`:''}
+          <option value="housing">🔧 מנהל דיור — ניהול תקלות וביקורות</option>
+          <option value="manager">🏠 מנהל דירה — דיווח תקלות וביקורת</option>
+        </select>
+      </div>
+      <div id="role-hint" class="al alb" style="font-size:12px">
+        <span>ℹ️</span>
+        <span id="role-hint-txt">מנהל דיור יכול לראות את כל הדירות שהוגדרו לו, לעדכן תקלות ולבצע ביקורות דיור.</span>
+      </div>
+      <div class="fg"><label>אזור / דירות משויכות</label>
+        <input class="fc" id="nu-zone" placeholder="לדוגמה: חיפה, עכו">
+      </div>
+      <div class="div"></div>
+      <div class="al alo" style="font-size:12px">
+        <span>⚠️</span>
+        <div>
+          <b>שימו לב:</b> הכניסה למערכת תהיה <b>לפי מספר הטלפון בלבד</b>.<br>
+          וודאו שהמספר נכון לפני השמירה.
+        </div>
+      </div>
+      <div class="fg"><label>שם המוסיף (חובה) *</label>
+        <input class="fc" id="nu-added" value="${CU.name}" readonly style="background:var(--g50);color:var(--g600)">
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btnp" onclick="submitAddUser()">💾 הוסף משתמש</button>
+      <button class="btn btno" onclick="cm()">ביטול</button>
+    </div>
+  </div>`);
+}
+
+function updateRoleHint(role){
+  const hints={
+    superadmin:'מנהל ראשי — גישה מלאה לכל המערכת, כולל ניהול הרשאות ומשתמשים.',
+    housing:'מנהל דיור יכול לראות את כל הדירות שהוגדרו לו, לעדכן תקלות ולבצע ביקורות דיור.',
+    manager:'מנהל דירה יכול לדווח תקלות ולבצע ביקורת דירה בדירות המשויכות אליו בלבד.',
+  };
+  const el=document.getElementById('role-hint-txt');
+  if(el)el.textContent=hints[role]||'';
+}
+
+function submitAddUser(){
+  const name=document.getElementById('nu-name').value.trim();
+  const phone=document.getElementById('nu-phone').value.trim();
+  const role=document.getElementById('nu-role').value;
+  const title=document.getElementById('nu-title').value.trim();
+  const zone=document.getElementById('nu-zone').value.trim();
+  if(!name){toast('שם מלא חובה','var(--red)');return}
+  if(!phone){toast('מספר טלפון חובה','var(--red)');return}
+  const norm=phone.replace(/[\s\-]/g,'');
+  if(USERS.find(u=>u.phone.replace(/[\s\-]/g,'')===norm)){
+    toast('מספר טלפון זה כבר קיים במערכת!','var(--red)');return
+  }
+  const rh={superadmin:'מנהל ראשי',housing:'מנהל דיור',manager:'מנהל דירה'}[role];
+  USERS.push({
+    id:'u'+(USERS.length+1),name,phone:norm,
+    role,rh,title:title||rh,active:true,zone,
+    addedBy:CU.name,addedAt:new Date().toLocaleDateString('he-IL')
+  });
+  LOG.unshift({ts:new Date().toLocaleString('he-IL'),user:CU.name,act:'הוספת משתמש',apt:'—',ch:`נוסף: ${name} (${rh})`});
+  cm();go('users');
+  toast(`${name} נוסף בהצלחה ✓`,'var(--green)');
+}
+
+/* ── Edit User ── */
+function mUserEdit(uid){
+  const u=USERS.find(x=>x.id===uid);
+  if(!u)return;
+  // only superadmin can edit other superadmins
+  if(u.role==='superadmin'&&!isSuperAdmin()){toast('רק מנהל ראשי יכול לערוך מנהל ראשי','var(--red)');return}
+  sm(`<div class="modal">
+    <div class="mhdr"><h2>✏️ עריכת משתמש</h2><button class="mclose" onclick="cm()">✕</button></div>
+    <div class="mbody">
+      <div class="fg"><label>שם מלא *</label>
+        <input class="fc" id="eu-name" value="${u.name}">
+      </div>
+      <div class="fg"><label>מספר טלפון (זיהוי כניסה) *</label>
+        <input class="fc" id="eu-phone" type="tel" value="${u.phone}" inputmode="tel">
+      </div>
+      <div class="fg"><label>תפקיד / כותרת</label>
+        <input class="fc" id="eu-title" value="${u.title||''}">
+      </div>
+      <div class="fg"><label>הרשאה במערכת *</label>
+        <select class="fc" id="eu-role">
+          ${isSuperAdmin()?`<option value="superadmin" ${u.role==='superadmin'?'selected':''}>👑 מנהל ראשי</option>`:''}
+          <option value="housing" ${u.role==='housing'?'selected':''}>🔧 מנהל דיור</option>
+          <option value="manager" ${u.role==='manager'?'selected':''}>🏠 מנהל דירה</option>
+        </select>
+      </div>
+      <div class="fg"><label>אזור / דירות</label>
+        <input class="fc" id="eu-zone" value="${u.zone||''}">
+      </div>
+      <div class="fg"><label>סטטוס</label>
+        <select class="fc" id="eu-active">
+          <option value="1" ${u.active?'selected':''}>פעיל</option>
+          <option value="0" ${!u.active?'selected':''}>מושבת</option>
+        </select>
+      </div>
+      <div class="div"></div>
+      <div class="fg"><label>סיבת עדכון *</label>
+        <input class="fc" id="eu-reason" placeholder="מה השתנה ולמה...">
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btnp" onclick="submitEditUser('${u.id}')">💾 שמור שינויים</button>
+      <button class="btn btno" onclick="cm()">ביטול</button>
+    </div>
+  </div>`);
+}
+
+function submitEditUser(uid){
+  const reason=document.getElementById('eu-reason').value.trim();
+  if(!reason){toast('סיבת עדכון חובה','var(--red)');return}
+  const phone=document.getElementById('eu-phone').value.replace(/[\s\-]/g,'');
+  const u=USERS.find(x=>x.id===uid);
+  const changes=[];
+  if(u.name!==document.getElementById('eu-name').value.trim())changes.push('שם');
+  if(u.phone!==phone)changes.push('טלפון');
+  if(u.role!==document.getElementById('eu-role').value)changes.push('הרשאה');
+  u.name=document.getElementById('eu-name').value.trim();
+  u.phone=phone;
+  u.title=document.getElementById('eu-title').value.trim();
+  u.role=document.getElementById('eu-role').value;
+  u.rh={superadmin:'מנהל ראשי',housing:'מנהל דיור',manager:'מנהל דירה'}[u.role];
+  u.zone=document.getElementById('eu-zone').value.trim();
+  u.active=document.getElementById('eu-active').value==='1';
+  LOG.unshift({ts:new Date().toLocaleString('he-IL'),user:CU.name,act:'עדכון משתמש',apt:'—',ch:`${u.name} — ${reason}`});
+  cm();go('users');
+  toast('המשתמש עודכן ✓','var(--green)');
+}
+</script>
+</body>
+</html>

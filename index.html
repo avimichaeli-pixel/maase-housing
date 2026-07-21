@@ -619,6 +619,7 @@ async function loadApartmentsFromDB() {
         lease: a.lease || '', ll: a.landlord || '',
         ph: a.phone || '', elec: a.elec || '', water: a.water || '',
         mg: a.manager_name || '', hm: a.housing_manager || '',
+        prog_mgr: a.prog_mgr || '', coordinator: a.coordinator || '', guides: a.guides || '',
         st: a.status || 'פעילה', faults: 0, ins: false,
         sheet: a.sheet || 'תשפו', notes: a.notes || ''
       });
@@ -1028,6 +1029,7 @@ function om(type,id){
   if(type==='apt-edit')return mAptEdit(id);
   if(type==='user-add')return mUserAdd();
   if(type==='user-edit')return mUserEdit(id);
+  if(type==='insp-view')return mInspView(id);
 }
 function sm(html){document.getElementById('mr').innerHTML=`<div class="movl" onclick="if(event.target===this)cm()">${html}</div>`}
 function cm(){document.getElementById('mr').innerHTML=''}
@@ -1058,12 +1060,12 @@ function rDash(){
 
   return`
 <div class="stats">
-  <div class="sc sb"><div class="snum">${APTS.length}</div><div class="slbl">סה"כ נכסים במערכת</div></div>
-  <div class="sc sr"><div class="snum">${opF}</div><div class="slbl">תקלות פתוחות</div></div>
-  <div class="sc so"><div class="snum">${urgF}</div><div class="slbl">תקלות דחופות</div></div>
-  <div class="sc sg"><div class="snum">${misI}</div><div class="slbl">ביקורות חסרות</div></div>
-  <div class="sc sp"><div class="snum">${recF}</div><div class="slbl">תקלות חוזרות</div></div>
-  <div class="sc so"><div class="snum">${noMg}</div><div class="slbl">נכסים ללא מנהל</div></div>
+  <div class="sc sb" style="cursor:pointer" onclick="go('apartments')"><div class="snum">${APTS.length}</div><div class="slbl">סה"כ נכסים ←</div></div>
+  <div class="sc sr" style="cursor:pointer" onclick="go('faults')"><div class="snum">${opF}</div><div class="slbl">תקלות פתוחות ←</div></div>
+  <div class="sc so" style="cursor:pointer" onclick="go('faults')"><div class="snum">${urgF}</div><div class="slbl">תקלות דחופות ←</div></div>
+  <div class="sc sg" style="cursor:pointer" onclick="go('inspections')"><div class="snum">${misI}</div><div class="slbl">ביקורות חסרות ←</div></div>
+  <div class="sc sp" style="cursor:pointer" onclick="go('faults')"><div class="snum">${recF}</div><div class="slbl">תקלות חוזרות ←</div></div>
+  <div class="sc so" style="cursor:pointer" onclick="go('apartments')"><div class="snum">${noMg}</div><div class="slbl">נכסים ללא מנהל ←</div></div>
 </div>
 <div style="display:flex;gap:8px;flex-wrap:wrap">
   <div class="card" style="flex:1;min-width:0;padding:12px;display:flex;flex-direction:column;gap:2px">
@@ -1256,6 +1258,8 @@ ${data.map(f=>`
       ${bx(ub(f.urg),f.urg)}
       ${f.rec?bx('xp','🔄 חוזרת ×'+f.rn):''}
       ${f.hn?`<span style="font-size:12px;color:var(--g400)">מטפל: ${f.hn}</span>`:''}
+      ${f.updated?`<span style="font-size:11px;color:var(--g400)">עודכן: ${f.updated}</span>`:''}
+      ${f.closed?`<span style="font-size:11px;color:var(--green)">נסגר: ${f.closed}</span>`:''}
     </div>
   </div>`).join('')}`;
 }
@@ -1266,8 +1270,9 @@ function rInsps(){
 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
   <div class="tabs" style="margin:0;flex:1">
     <div class="tab on" onclick="setIT('all',this)">הכל</div>
-    <div class="tab" onclick="setIT('מנהל דירה',this)">מנהל דירה</div>
-    <div class="tab" onclick="setIT('מנהל דיור',this)">מנהל דיור</div>
+    <div class="tab" onclick="setIT('מנהל תוכנית',this)">מנהל תוכנית</div>
+    <div class="tab" onclick="setIT('מדריך',this)">מדריך</div>
+    <div class="tab" onclick="setIT('מנהל דירות',this)">מנהל דירות</div>
   </div>
   <button class="btn btnp btnsm" onclick="om('insp')">＋ ביקורת</button>
 </div>
@@ -1294,6 +1299,7 @@ function rIL(t){
         ${i.sc?`<b style="color:${i.sc>=85?'var(--green)':i.sc>=60?'var(--orange)':'var(--red)'};font-size:14px">${i.sc}%</b>`:''}
         ${i.ins?`<span style="font-size:12px;color:var(--g600)">${i.ins}</span>`:''}
         ${i.st==='לא בוצעה'?`<button class="btn btnp btnsm" onclick="om('insp','${i.aid}')" style="margin-right:auto">בצע עכשיו</button>`:''}
+        ${i.st==='בוצעה'||i.st==='באיחור'?`<button class="btn btno btnsm" onclick="om('insp-view','${i.id}')" style="margin-right:auto">👁 צפה בביקורת</button>`:''}
       </div>
     </div>`).join('');
 }
@@ -1657,7 +1663,9 @@ function mFaultV(id){
           <div><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">דירה</div><b>${f.apt}</b></div>
           <div><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">עיר</div><b>${f.city}</b></div>
           <div><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">מדווח</div><b>${f.rep}</b></div>
-          <div><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">תאריך</div><b>${f.date}</b></div>
+          <div><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">תאריך פתיחה</div><b>${f.date}</b></div>
+          ${f.updated?`<div><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">עדכון אחרון</div><b>${f.updated}</b></div>`:''}
+          ${f.closed?`<div><div style="font-size:10px;color:var(--green);text-transform:uppercase;font-weight:800">תאריך סגירה</div><b style="color:var(--green)">${f.closed}</b></div>`:''}
         </div>
       </div>
       <div class="cardsm"><b>תיאור:</b><p style="margin-top:4px;font-size:13px;color:var(--g600)">${f.desc}</p></div>
@@ -1693,6 +1701,10 @@ function saveFV(id,force){
   if(i>=0){
     FAULTS[i].st=force||document.getElementById('fv-st').value;
     FAULTS[i].hn=n;FAULTS[i].note=document.getElementById('fv-note').value;
+    FAULTS[i].updated=new Date().toLocaleDateString('he-IL');
+    if(FAULTS[i].st==='תוקנה'||FAULTS[i].st==='נסגרה'){
+      FAULTS[i].closed=new Date().toLocaleDateString('he-IL');
+    }
     updateFaultInDB(id, FAULTS[i]);
     saveAuditLog('עדכון תקלה', FAULTS[i].st, FAULTS[i].aid, FAULTS[i].apt);
   }
@@ -1721,6 +1733,9 @@ function mAptV(id){
         ${a.water?`<div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">💧 מונה מים</div><b style="font-family:monospace">${a.water}</b></div>`:''}
         <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">מנהל דירה</div><b>${a.mg||'<span style="color:var(--red)">לא שויך</span>'}</b></div>
         <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">מנהל דיור</div><b>${a.hm||'—'}</b></div>
+        ${a.prog_mgr?`<div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">מנהל תוכנית</div><b>${a.prog_mgr}</b></div>`:''}
+        ${a.coordinator?`<div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">רכז</div><b>${a.coordinator}</b></div>`:''}
+        ${a.guides?`<div class="cardsm" style="grid-column:1/-1"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">מדריכים</div><b>${a.guides}</b></div>`:''}
       </div>
       <div class="div"></div>
       <div class="stitle" style="margin-bottom:8px">⚠️ תקלות (${af.length})</div>
@@ -1755,7 +1770,11 @@ function mInsp(aid){
         <select class="fc">${APTS.map(a=>`<option ${a.id===aid?'selected':''}>${a.addr} · ${a.city}</option>`).join('')}</select>
       </div>
       <div class="fg"><label>סוג ביקורת *</label>
-        <select class="fc"><option>ביקורת מנהל דירה</option><option>ביקורת מנהל דיור</option></select>
+        <select class="fc" id="insp-type">
+          <option>ביקורת מנהל תוכנית (חודשי)</option>
+          <option>ביקורת מדריך (דו-שבועי)</option>
+          <option>ביקורת מנהל דירות — משה עטיה (3 בשנה)</option>
+        </select>
       </div>
       <div class="fg"><label>חודש</label>
         <select class="fc"><option>יולי</option><option>יוני</option><option>אוגוסט</option></select>
@@ -1772,6 +1791,8 @@ function mInsp(aid){
               <button class="csb csbr" onclick="setCS(${i},'bad',this)">✗ לא תקין</button>
               <button class="csb csbn" onclick="setCS(${i},'na',this)">— לא רלוונטי</button>
             </div>
+            <input class="fc" style="margin-top:6px;font-size:13px;padding:7px 10px"
+              id="cl-note-${i}" placeholder="הערה לסעיף זה (אופציונלי)...">
           </div>`).join('')}
       </div>
       <div class="fg"><label>הערות</label><textarea class="fc" placeholder="הערות נוספות..."></textarea></div>
@@ -1803,6 +1824,31 @@ function setCS(i,v,btn){
 function subInsp(){
   const n=document.getElementById('insp-n').value.trim();
   if(!n){toast('שם מלא חובה!','var(--red)');return}
+  // Collect checklist with per-item notes
+  const checklist={};
+  CL.forEach((item,i)=>{
+    const row=document.getElementById('cl-'+i);
+    if(!row)return;
+    const activeBtn=row.querySelector('.csb.on');
+    const noteEl=document.getElementById('cl-note-'+i);
+    const status=activeBtn?
+      (activeBtn.classList.contains('csbg')?'תקין':
+       activeBtn.classList.contains('csbr')?'לא תקין':'לא רלוונטי'):'לא סומן';
+    checklist[item]={status, note: noteEl?.value||''};
+  });
+  const typeEl=document.getElementById('insp-type');
+  const newInsp={
+    id:'i'+(INSPS.length+1),
+    tp:typeEl?typeEl.value:'ביקורת מנהל תוכנית',
+    aid:'', apt:'', city:'',
+    mon:new Date().toLocaleDateString('he-IL',{month:'long'}),
+    yr:new Date().getFullYear().toString(),
+    date:new Date().toLocaleDateString('he-IL'),
+    ins:n, st:'בוצעה', sc:0, notes:'', checklist
+  };
+  INSPS.unshift(newInsp);
+  saveInspectionToDB({...newInsp, inspector:n});
+  saveAuditLog('ביקורת חודשית', newInsp.tp, null, null);
   cm();toast('הביקורת נשמרה בהצלחה ✓','var(--green)');
 }
 
@@ -1903,6 +1949,39 @@ function saveAE(id){
   if(!n){toast('שם מלא חובה!','var(--red)');return}
   if(!r){toast('סיבת העדכון חובה!','var(--red)');return}
   cm();go('apartments');toast('הדירה עודכנה ✓','var(--green)');
+}
+
+
+/* ── View Inspection ── */
+function mInspView(id){
+  const insp=INSPS.find(x=>x.id===id);
+  if(!insp){toast('ביקורת לא נמצאה','var(--red)');return}
+  sm(`<div class="modal">
+    <div class="mhdr"><h2>📋 ביקורת — ${insp.apt||insp.aid}</h2><button class="mclose" onclick="cm()">✕</button></div>
+    <div class="mbody">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">סוג ביקורת</div><b>${insp.tp}</b></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">סטטוס</div><div style="margin-top:4px">${bx(ib(insp.st),insp.st)}</div></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">עיר</div><b>${insp.city}</b></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">חודש</div><b>${insp.mon} ${insp.yr}</b></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">תאריך ביצוע</div><b>${insp.date||'—'}</b></div>
+        <div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">מבצע הביקורת</div><b>${insp.ins||'—'}</b></div>
+        ${insp.sc?`<div class="cardsm"><div style="font-size:10px;color:var(--g400);text-transform:uppercase;font-weight:800">ציון</div><b style="font-size:20px;color:${insp.sc>=85?'var(--green)':insp.sc>=60?'var(--orange)':'var(--red)'}">${insp.sc}%</b></div>`:''}
+      </div>
+      ${insp.notes?`<div class="cardsm"><b>הערות:</b><p style="margin-top:4px;font-size:13px;color:var(--g600)">${insp.notes}</p></div>`:''}
+      ${insp.checklist&&Object.keys(insp.checklist||{}).length?`
+        <div class="stitle">רשימת בדיקה</div>
+        ${Object.entries(insp.checklist).map(([k,v])=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--g100)">
+            <span style="flex:1;font-size:13px">${k}</span>
+            ${bx(v.status==='תקין'?'xg':v.status==='לא תקין'?'xr':'xgr',v.status)}
+            ${v.note?`<span style="font-size:11px;color:var(--g400)">${v.note}</span>`:''}
+          </div>`).join('')}`:''}
+    </div>
+    <div class="mfoot">
+      <button class="btn btno" onclick="cm()">סגור</button>
+    </div>
+  </div>`);
 }
 
 /* ── Add User ── */
